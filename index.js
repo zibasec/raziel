@@ -7,13 +7,13 @@ if (process.platform === 'darwin') {
 }
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
-const db = new AWS.DynamoDB(require('../config.json'))
 let createdTable = process.env['NODE_ENV'] === 'production'
 
 module.exports = async (table, opts) => ({
   then (done) {
-    opts = opts || {}
+    opts = opts || { region: 'us-east-1' }
 
+    const db = new AWS.DynamoDB(opts)
     const sep = opts.sep || '/'
     const api = {}
 

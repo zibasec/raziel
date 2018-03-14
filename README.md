@@ -2,12 +2,15 @@
 A light weight, async/await abstraction for DynamoDB.
 
 # USAGE
+```bash
+npm install MindPointGroup/raziel
+```
 
 ## OPEN
 Create or open a table.
 
 ```js
-const Dynamo = require('../db')
+const Dynamo = require('raziel')
 const { err, db } = await Dynamo('imports')
 ```
 
