@@ -1,6 +1,11 @@
 # SYNOPSIS
 A light weight, async/await abstraction for DynamoDB.
 
+
+# BUILD STATUS
+[![CircleCI](https://circleci.com/gh/MindPointGroup/raziel/tree/master.svg?style=svg&circle-token=5bd6211fdb6cbe6df549b89b9f3d478f767e0d0d)](https://circleci.com/gh/MindPointGroup/raziel/tree/master)
+
+
 # USAGE
 ```bash
 npm install MindPointGroup/raziel
