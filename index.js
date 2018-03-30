@@ -1,13 +1,39 @@
 const AWS = require('aws-sdk')
 const { EventEmitter } = require('events')
 
-if (process.platform === 'darwin') {
-  const credentials = new AWS.SharedIniFileCredentials({ profile: 'mpg' })
+if (process.env['AWS_PROFILE']) {
+  const credentials = new AWS.SharedIniFileCredentials({
+    profile: process.env['AWS_PROFILE']
+  })
+
   AWS.config.credentials = credentials
 }
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 let createdTable = process.env['NODE_ENV'] === 'production'
+
+const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
+const ERR_KEY_TYPE = new Error('Expected an array')
+const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
+
+const assertKey = (key, done) => {
+  if (!Array.isArray(key)) {
+    done({ err: ERR_KEY_TYPE, key })
+    return false
+  }
+
+  if (!(key.length >= 2)) {
+    done({ err: ERR_KEY_LEN, key })
+    return false
+  }
+
+  if (!key[0] || !key[1]) {
+    done({ err: ERR_KEY_EMPTY, key })
+    return false
+  }
+
+  return true
+}
 
 module.exports = async (table, opts) => ({
   then (done) {
@@ -52,6 +78,8 @@ module.exports = async (table, opts) => ({
           opts = null
         }
 
+        if (!assertKey(key, done)) return
+
         const k = key.slice()
         let v = null
 
@@ -74,7 +102,7 @@ module.exports = async (table, opts) => ({
           params.ConditionExpression = NOTEXISTS
         }
 
-        db.putItem(params, (err, data) => {
+        db.putItem(params, (err) => {
           if (err) return done({ err })
           done({})
         })
@@ -85,6 +113,8 @@ module.exports = async (table, opts) => ({
       then (done) {
         const k = key.slice()
 
+        if (!assertKey(key, done)) return
+
         const params = {
           TableName: table,
           Key: {
@@ -92,15 +122,27 @@ module.exports = async (table, opts) => ({
             rkey: { S: k.join(sep) }
           }
         }
-        db.getItem(params, (err) => {
+
+        db.getItem(params, (err, data) => {
           if (err) return done({ err })
-          done({})
+
+          let value = null
+
+          try {
+            value = JSON.parse(data.Item.value.S)
+          } catch (err) {
+            return done({ err })
+          }
+
+          done({ value })
         })
       }
     })
 
     api.del = (key) => ({
       then (done) {
+        if (!assertKey(key, done)) return
+
         const k = key.slice()
         const params = {
           Key: {

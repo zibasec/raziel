@@ -9,9 +9,62 @@ test('sanity test', t => {
 })
 
 test('setup', async t => {
-  const { err, db: _db } = await Dynamo('imports')
+  const { err, db: _db } = await Dynamo('test')
   db = _db
   t.ok(!err)
+  t.end()
+})
+
+test('passing - put', async t => {
+  const key = ['a', 'a']
+  const value = { foo: 100 }
+
+  const { err } = await db.put(key, value)
+
+  t.ok(!err, err && err.message)
+  t.end()
+})
+
+test('passing - get', async t => {
+  const key = ['a', 'a']
+
+  const { err, value } = await db.get(key)
+
+  t.ok(!err, err && err.message)
+  t.deepEqual(value, { foo: 100 }, 'object is the same')
+  t.end()
+})
+
+test('failing - get', async t => {
+  const key = []
+
+  const { err } = await db.get(key)
+
+  t.ok(err)
+  t.end()
+})
+
+test('passing - del', async t => {
+  const key = ['a', 'a']
+
+  {
+    const { err } = await db.del(key)
+    t.ok(!err, err && err.message)
+  }
+
+  {
+    const { err } = await db.get(key)
+    t.ok(err)
+    t.end()
+  }
+})
+
+test('failing - del', async t => {
+  const key = []
+
+  const { err } = await db.get(key)
+
+  t.ok(err)
   t.end()
 })
 
