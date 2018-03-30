@@ -201,7 +201,15 @@ module.exports = async (table, opts) => ({
 
             if (data && data.Items) {
               data.Items.map(item => {
-                events.emit('data', item)
+                let value = null
+                try {
+                  value = JSON.parse(item.value.S)
+                } catch (err) {
+                  return done({ err })
+                }
+
+                const key = [item.hkey.S, item.rkey.S]
+                events.emit('data', { key, value })
               })
             }
 
