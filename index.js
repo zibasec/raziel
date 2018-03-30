@@ -169,6 +169,8 @@ module.exports = async (table, opts) => ({
           }
         }
 
+        opts.key = opts.key || []
+
         const key = opts.key.shift()
         const prefix = opts.key.join('/')
 
@@ -178,7 +180,7 @@ module.exports = async (table, opts) => ({
             ':prefix': { S: prefix }
           }
           params.KeyConditionExpression = 'hkey = :key and begins_with(rkey, :prefix)'
-        } else {
+        } else if (opts.key.length) {
           params.ExpressionAttributeValues = {
             ':key': { S: key }
           }
@@ -196,7 +198,9 @@ module.exports = async (table, opts) => ({
         const events = new EventEmitter()
 
         function query () {
-          db.query(params, (err, data) => {
+          const method = opts.key.length ? 'query' : 'scan'
+
+          db[method](params, (err, data) => {
             if (err) return events.emit('error', err)
 
             if (data && data.Items) {

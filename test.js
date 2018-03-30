@@ -82,11 +82,9 @@ test('passing - batch', async t => {
 })
 
 test('passing - query without prefix', async t => {
-  const params = {
-    key: ['a']
-  }
+  const params = {}
 
-  t.plan(5)
+  t.plan(6)
 
   const { events } = await db.query(params)
   t.ok(events)
@@ -99,7 +97,7 @@ test('passing - query without prefix', async t => {
   })
 
   events.on('end', () => {
-    t.equal(count, 3)
+    t.equal(count, 4)
   })
 })
 
