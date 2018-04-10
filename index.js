@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk')
-const { EventEmitter } = require('events')
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
@@ -173,53 +172,76 @@ class Table {
   }
 
   query (opts = {}) {
-    return new Promise(resolve => {
-      const params = {
-        TableName: (opts && opts.table) || this.table,
-        ProjectionExpression: 'hkey, rkey, #val',
-        ExpressionAttributeNames: {
-          '#val': 'value'
-        }
+    const params = {
+      TableName: (opts && opts.table) || this.table,
+      ProjectionExpression: 'hkey, rkey, #val',
+      ExpressionAttributeNames: {
+        '#val': 'value'
       }
+    }
 
-      opts.key = opts.key || []
+    opts.key = opts.key || []
 
-      const key = opts.key.shift()
-      const prefix = opts.key.join('/')
+    const key = opts.key.shift()
+    const prefix = opts.key.join('/')
 
-      if (prefix) {
-        params.ExpressionAttributeValues = {
-          ':key': { S: key },
-          ':prefix': { S: prefix }
-        }
-        params.KeyConditionExpression = HASPREFIX
-      } else if (opts.key.length) {
-        params.ExpressionAttributeValues = {
-          ':key': { S: key }
-        }
-        params.KeyConditionExpression = 'hkey = :key'
+    if (prefix) {
+      params.ExpressionAttributeValues = {
+        ':key': { S: key },
+        ':prefix': { S: prefix }
       }
-
-      if (opts.limit) {
-        params.Limit = opts.limit
+      params.KeyConditionExpression = HASPREFIX
+    } else if (key) {
+      params.ExpressionAttributeValues = {
+        ':key': { S: key }
       }
+      params.KeyConditionExpression = 'hkey = :key'
+    }
 
-      if (opts.start) {
-        params.ExclusiveStartKey = opts.start
-      }
+    if (opts.limit) {
+      params.Limit = opts.limit
+    }
 
-      const events = new EventEmitter()
-      const that = this
+    if (opts.start) {
+      params.ExclusiveStartKey = opts.start
+    }
 
-      function query () {
-        const method = opts.key.length ? 'query' : 'scan'
+    const method = key ? 'query' : 'scan'
+    const array = []
+    const db = this.db
 
-        that.db[method](params, (err, data) => {
-          if (err) return events.emit('error', err)
+    let complete = false
+    let i = 0
 
-          if (data && data.Items) {
-            data.Items.map(item => {
+    return {
+      next: () => ({
+        then (resolve) {
+          if (i < array.length) {
+            const data = array[i++]
+
+            return resolve({
+              key: data.key,
+              value: data.value,
+              done: false
+            })
+          }
+
+          if (complete) {
+            return resolve({ done: true })
+          }
+
+          db[method](params, (err, response) => {
+            if (err) {
+              return resolve({ err })
+            }
+
+            if (!response || !response.Items) {
+              return resolve({ done: true })
+            }
+
+            response.Items.map(item => {
               let value = null
+
               try {
                 value = JSON.parse(item.value.S)
               } catch (err) {
@@ -227,23 +249,24 @@ class Table {
               }
 
               const key = [item.hkey.S, item.rkey.S]
-              events.emit('data', { key, value })
+              array.push({ key, value })
             })
-          }
 
-          if (typeof data.LastEvaluatedKey !== 'undefined') {
-            params.ExclusiveStartKey = data.LastEvaluatedKey
-            return query()
-          } else {
-            events.emit('end')
-          }
-        })
-      }
+            if (typeof response.LastEvaluatedKey === 'undefined') {
+              complete = true
+            }
 
-      query()
+            const data = array[i++]
 
-      resolve({ events })
-    })
+            resolve({
+              key: data.key,
+              value: data.value,
+              done: false
+            })
+          })
+        }
+      })
+    }
   }
 
   batch (ops, opts = {}) {

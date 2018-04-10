@@ -98,41 +98,74 @@ test('passing - batch', async t => {
 test('passing - query without prefix', async t => {
   const params = {}
 
-  t.plan(6)
-
-  const { events } = await table.query(params)
-  t.ok(events)
+  const iterator = table.query(params)
+  t.ok(iterator, 'has an iterator')
 
   let count = 0
 
-  events.on('data', d => {
-    count++
-    t.ok(true)
-  })
+  while (true) {
+    const { err, key, value, done } = await iterator.next()
 
-  events.on('end', () => {
-    t.equal(count, 4)
-  })
+    if (done) break
+    count++
+
+    t.ok(!err, err && err.message)
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 4)
+  t.end()
 })
 
-test('passing - query with prefix', async t => {
+test('passing - query with hash component', async t => {
+  const params = {
+    key: ['a']
+  }
+
+  const iterator = table.query(params)
+  t.ok(iterator, 'has an iterator')
+
+  let count = 0
+
+  while (true) {
+    const { err, key, value, done } = await iterator.next()
+
+    if (done) break
+    count++
+
+    console.log(key, value)
+    t.ok(!err, err && err.message)
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 3)
+  t.end()
+})
+
+test('passing - query with hash and range components', async t => {
   const params = {
     key: ['a', 'b']
   }
 
-  t.plan(3)
-
-  const { events } = await table.query(params)
-  t.ok(events)
+  const iterator = table.query(params)
+  t.ok(iterator, 'has an iterator')
 
   let count = 0
 
-  events.on('data', d => {
-    count++
-    t.ok(true)
-  })
+  while (true) {
+    const { err, key, value, done } = await iterator.next()
 
-  events.on('end', () => {
-    t.equal(count, 1)
-  })
+    if (done) break
+    count++
+
+    console.log(key, value)
+    t.ok(!err, err && err.message)
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 1)
+  t.end()
 })

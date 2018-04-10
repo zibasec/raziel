@@ -69,29 +69,16 @@ const { err } = await table.batch(ops)
 
 ## QUERY
 Get a range of keys and their values. This produces an
-event emitter that emits a `data` event when it finds a
-new key/value pair. The `end` event is emitted when there
-are no more records found. If there is an error, it will
-bubble up from the aws-sdk and no more events will be
-emitted.
+iterator.
 
 If the previous batch command was executed, there there were
 only three records in the database. Two events would be
 emitted by the following query.
 
 ```js
-const { events } = await table.query({ key: ['a'] })
+const iterator = table.query({ key: ['a'] })
 
-events.on('data', ({ key, value }) => {
-  assert(key === ['a', 'a'])
-  assert(value === { foo: 100 })
-})
-
-events.once('error', err => {
-  // ...the dynamodb error
-})
-
-events.once('end', () => {
-  // ...done!
-})
+while (true) {
+  const { err, key, value, done } = await iterator.next()
+}
 ```
