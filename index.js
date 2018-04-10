@@ -10,38 +10,42 @@ if (process.env['AWS_PROFILE']) {
 }
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
+const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
+
 let createdTable = process.env['NODE_ENV'] === 'production'
 
 const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
 const ERR_KEY_TYPE = new Error('Expected an array')
 const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
 
-const assertKey = (key, done) => {
+const assertKey = (key, resolve) => {
   if (!Array.isArray(key)) {
-    done({ err: ERR_KEY_TYPE, key })
+    resolve({ err: ERR_KEY_TYPE, key })
     return false
   }
 
   if (!(key.length >= 2)) {
-    done({ err: ERR_KEY_LEN, key })
+    resolve({ err: ERR_KEY_LEN, key })
     return false
   }
 
   if (!key[0] || !key[1]) {
-    done({ err: ERR_KEY_EMPTY, key })
+    resolve({ err: ERR_KEY_EMPTY, key })
     return false
   }
 
   return true
 }
 
-module.exports = async (table, opts) => ({
-  then (done) {
-    opts = opts || { region: 'us-east-1' }
+class Table {
+  constructor (table, opts) {
+    this.table = table
+    this.opts = opts || { region: 'us-east-1' }
+    this.opts.sep = this.opts.sep || '/'
+  }
 
-    const db = new AWS.DynamoDB(opts)
-    const sep = opts.sep || '/'
-    const api = {}
+  then (resolve) {
+    this.db = new AWS.DynamoDB(this.opts)
 
     const params = {
       AttributeDefinitions: [
@@ -68,228 +72,235 @@ module.exports = async (table, opts) => ({
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5
       },
-      TableName: table
+      TableName: this.table
     }
 
-    api.put = (key, opts, value) => ({
-      then (done) {
-        if (!value) {
-          value = opts
-          opts = null
-        }
+    const table = this
 
-        if (!assertKey(key, done)) return
-
-        const k = key.slice()
-        let v = null
-
-        try {
-          v = JSON.stringify(value)
-        } catch (err) {
-          return done({ err })
-        }
-
-        const params = {
-          Item: {
-            hkey: { S: k.shift() },
-            rkey: { S: k.join(sep) },
-            value: { S: v }
-          },
-          TableName: table
-        }
-
-        if (opts && opts.notExists) {
-          params.ConditionExpression = NOTEXISTS
-        }
-
-        db.putItem(params, (err) => {
-          if (err) return done({ err })
-          done({})
-        })
-      }
-    })
-
-    api.get = (key) => ({
-      then (done) {
-        const k = key.slice()
-
-        if (!assertKey(key, done)) return
-
-        const params = {
-          TableName: table,
-          Key: {
-            hkey: { S: k.shift() },
-            rkey: { S: k.join(sep) }
-          }
-        }
-
-        db.getItem(params, (err, data) => {
-          if (err) return done({ err })
-
-          let value = null
-
-          try {
-            value = JSON.parse(data.Item.value.S)
-          } catch (err) {
-            return done({ err })
-          }
-
-          done({ value })
-        })
-      }
-    })
-
-    api.del = (key) => ({
-      then (done) {
-        if (!assertKey(key, done)) return
-
-        const k = key.slice()
-        const params = {
-          Key: {
-            hkey: { S: k.shift() },
-            rkey: { S: k.join(sep) }
-          },
-          TableName: table
-        }
-
-        db.deleteItem(params, (err) => {
-          if (err) return done({ err })
-          done({})
-        })
-      }
-    })
-
-    api.query = (opts) => ({
-      then (done) {
-        const params = {
-          TableName: table,
-          ProjectionExpression: 'hkey, rkey, #val',
-          ExpressionAttributeNames: {
-            '#val': 'value'
-          }
-        }
-
-        opts.key = opts.key || []
-
-        const key = opts.key.shift()
-        const prefix = opts.key.join('/')
-
-        if (prefix) {
-          params.ExpressionAttributeValues = {
-            ':key': { S: key },
-            ':prefix': { S: prefix }
-          }
-          params.KeyConditionExpression = 'hkey = :key and begins_with(rkey, :prefix)'
-        } else if (opts.key.length) {
-          params.ExpressionAttributeValues = {
-            ':key': { S: key }
-          }
-          params.KeyConditionExpression = 'hkey = :key'
-        }
-
-        if (opts.limit) {
-          params.Limit = opts.limit
-        }
-
-        if (opts.start) {
-          params.ExclusiveStartKey = opts.start
-        }
-
-        const events = new EventEmitter()
-
-        function query () {
-          const method = opts.key.length ? 'query' : 'scan'
-
-          db[method](params, (err, data) => {
-            if (err) return events.emit('error', err)
-
-            if (data && data.Items) {
-              data.Items.map(item => {
-                let value = null
-                try {
-                  value = JSON.parse(item.value.S)
-                } catch (err) {
-                  return done({ err })
-                }
-
-                const key = [item.hkey.S, item.rkey.S]
-                events.emit('data', { key, value })
-              })
-            }
-
-            if (typeof data.LastEvaluatedKey !== 'undefined') {
-              params.ExclusiveStartKey = data.LastEvaluatedKey
-              return query()
-            } else {
-              events.emit('end')
-            }
-          })
-        }
-
-        query()
-
-        done({ events })
-      }
-    })
-
-    api.batch = (ops) => ({
-      then (done) {
-        const parseOp = op => {
-          if (op.type === 'put') {
-            let v = null
-
-            try {
-              v = JSON.stringify(op.value)
-            } catch (err) {
-              return done({ err })
-            }
-
-            return {
-              PutRequest: {
-                Item: {
-                  hkey: { S: op.key.shift() },
-                  rkey: { S: op.key.join(sep) },
-                  value: { S: v }
-                }
-              }
-            }
-          }
-
-          return {
-            DeleteRequest: {
-              Key: {
-                hkey: { S: op.key.shift() },
-                rkey: { S: op.key.join(sep) }
-              }
-            }
-          }
-        }
-
-        const params = {
-          RequestItems: {
-            [table]: ops.map(parseOp)
-          }
-        }
-
-        db.batchWriteItem(params, (err) => {
-          if (err) return done({ err })
-          return done({})
-        })
-      }
-    })
-
-    if (opts.assumeExists || createdTable) {
-      return done({ db: api })
+    if (this.opts.assumeExists || createdTable) {
+      return resolve({ db: this.db, table })
     }
 
-    db.createTable(params, (err, data) => {
+    this.db.createTable(params, (err, data) => {
       if (err && err.name !== 'ResourceInUseException') {
-        return done({ err })
+        return resolve({ err })
       }
 
       createdTable = true
 
-      done({ db: api })
+      resolve({ db: this.db, table })
     })
   }
-})
+
+  put (key, opts = {}, value) {
+    return new Promise(resolve => {
+      if (!value) {
+        value = opts
+        opts = null
+      }
+
+      if (!assertKey(key, resolve)) return
+
+      const k = key.slice()
+      let v = null
+
+      try {
+        v = JSON.stringify(value)
+      } catch (err) {
+        return resolve({ err })
+      }
+
+      const params = {
+        Item: {
+          hkey: { S: k.shift() },
+          rkey: { S: k.join(this.sep) },
+          value: { S: v }
+        },
+        TableName: (opts && opts.table) || this.table
+      }
+
+      if (opts && opts.notExists) {
+        params.ConditionExpression = NOTEXISTS
+      }
+
+      this.db.putItem(params, (err) => {
+        if (err) return resolve({ err })
+        resolve({})
+      })
+    })
+  }
+
+  get (key, opts = {}) {
+    return new Promise(resolve => {
+      const k = key.slice()
+
+      if (!assertKey(key, resolve)) return
+
+      const params = {
+        TableName: (opts && opts.table) || this.table,
+        Key: {
+          hkey: { S: k.shift() },
+          rkey: { S: k.join(this.sep) }
+        }
+      }
+
+      this.db.getItem(params, (err, data) => {
+        if (err) return resolve({ err })
+
+        let value = null
+
+        try {
+          value = JSON.parse(data.Item.value.S)
+        } catch (err) {
+          return resolve({ err })
+        }
+
+        resolve({ value })
+      })
+    })
+  }
+
+  del (key, opts = {}) {
+    return new Promise(resolve => {
+      if (!assertKey(key, resolve)) return
+
+      const k = key.slice()
+      const params = {
+        Key: {
+          hkey: { S: k.shift() },
+          rkey: { S: k.join(this.sep) }
+        },
+        TableName: (opts && opts.table) || this.table
+      }
+
+      this.db.deleteItem(params, (err) => {
+        if (err) return resolve({ err })
+        resolve({})
+      })
+    })
+  }
+
+  query (opts = {}) {
+    return new Promise(resolve => {
+      const params = {
+        TableName: (opts && opts.table) || this.table,
+        ProjectionExpression: 'hkey, rkey, #val',
+        ExpressionAttributeNames: {
+          '#val': 'value'
+        }
+      }
+
+      opts.key = opts.key || []
+
+      const key = opts.key.shift()
+      const prefix = opts.key.join('/')
+
+      if (prefix) {
+        params.ExpressionAttributeValues = {
+          ':key': { S: key },
+          ':prefix': { S: prefix }
+        }
+        params.KeyConditionExpression = HASPREFIX
+      } else if (opts.key.length) {
+        params.ExpressionAttributeValues = {
+          ':key': { S: key }
+        }
+        params.KeyConditionExpression = 'hkey = :key'
+      }
+
+      if (opts.limit) {
+        params.Limit = opts.limit
+      }
+
+      if (opts.start) {
+        params.ExclusiveStartKey = opts.start
+      }
+
+      const events = new EventEmitter()
+      const that = this
+
+      function query () {
+        const method = opts.key.length ? 'query' : 'scan'
+
+        that.db[method](params, (err, data) => {
+          if (err) return events.emit('error', err)
+
+          if (data && data.Items) {
+            data.Items.map(item => {
+              let value = null
+              try {
+                value = JSON.parse(item.value.S)
+              } catch (err) {
+                return resolve({ err })
+              }
+
+              const key = [item.hkey.S, item.rkey.S]
+              events.emit('data', { key, value })
+            })
+          }
+
+          if (typeof data.LastEvaluatedKey !== 'undefined') {
+            params.ExclusiveStartKey = data.LastEvaluatedKey
+            return query()
+          } else {
+            events.emit('end')
+          }
+        })
+      }
+
+      query()
+
+      resolve({ events })
+    })
+  }
+
+  batch (ops, opts = {}) {
+    return new Promise(resolve => {
+      const parseOp = op => {
+        if (op.type === 'put') {
+          let v = null
+
+          try {
+            v = JSON.stringify(op.value)
+          } catch (err) {
+            return resolve({ err })
+          }
+
+          return {
+            PutRequest: {
+              Item: {
+                hkey: { S: op.key.shift() },
+                rkey: { S: op.key.join(this.sep) },
+                value: { S: v }
+              }
+            }
+          }
+        }
+
+        return {
+          DeleteRequest: {
+            Key: {
+              hkey: { S: op.key.shift() },
+              rkey: { S: op.key.join(this.sep) }
+            }
+          }
+        }
+      }
+
+      const table = (opts && opts.table) || this.table
+
+      const params = {
+        RequestItems: {
+          [table]: ops.map(parseOp)
+        }
+      }
+
+      this.db.batchWriteItem(params, (err) => {
+        if (err) return resolve({ err })
+        return resolve({})
+      })
+    })
+  }
+}
+
+module.exports = Table

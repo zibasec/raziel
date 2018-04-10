@@ -1,7 +1,7 @@
 const test = require('tape')
-const Dynamo = require('.')
+const Table = require('.')
 
-let db = null
+let table = null
 
 test('sanity test', t => {
   t.ok(true)
@@ -9,9 +9,10 @@ test('sanity test', t => {
 })
 
 test('setup', async t => {
-  const { err, db: _db } = await Dynamo('test')
-  db = _db
-  t.ok(!err)
+  const { err, db, table: _table } = await new Table('test')
+  table = _table
+  t.ok(db, 'exposes the underlying database connection')
+  t.ok(!err, err && err.message)
   t.end()
 })
 
@@ -19,7 +20,8 @@ test('passing - put', async t => {
   const key = ['a', 'a']
   const value = { foo: 100 }
 
-  const { err } = await db.put(key, value)
+  console.log(table)
+  const { err } = await table.put(key, value)
 
   t.ok(!err, err && err.message)
   t.end()
@@ -28,7 +30,7 @@ test('passing - put', async t => {
 test('passing - get', async t => {
   const key = ['a', 'a']
 
-  const { err, value } = await db.get(key)
+  const { err, value } = await table.get(key)
 
   t.ok(!err, err && err.message)
   t.deepEqual(value, { foo: 100 }, 'object is the same')
@@ -38,7 +40,7 @@ test('passing - get', async t => {
 test('failing - get', async t => {
   const key = []
 
-  const { err } = await db.get(key)
+  const { err } = await table.get(key)
 
   t.ok(err)
   t.end()
@@ -48,12 +50,12 @@ test('passing - del', async t => {
   const key = ['a', 'a']
 
   {
-    const { err } = await db.del(key)
+    const { err } = await table.del(key)
     t.ok(!err, err && err.message)
   }
 
   {
-    const { err } = await db.get(key)
+    const { err } = await table.get(key)
     t.ok(err)
     t.end()
   }
@@ -62,7 +64,7 @@ test('passing - del', async t => {
 test('failing - del', async t => {
   const key = []
 
-  const { err } = await db.get(key)
+  const { err } = await table.get(key)
 
   t.ok(err)
   t.end()
@@ -76,7 +78,7 @@ test('passing - batch', async t => {
     { type: 'put', key: ['b', 'a'], value: 0 }
   ]
 
-  const { err: errBatch } = await db.batch(ops)
+  const { err: errBatch } = await table.batch(ops)
   t.ok(!errBatch)
   t.end()
 })
@@ -86,7 +88,7 @@ test('passing - query without prefix', async t => {
 
   t.plan(6)
 
-  const { events } = await db.query(params)
+  const { events } = await table.query(params)
   t.ok(events)
 
   let count = 0
@@ -108,7 +110,7 @@ test('passing - query with prefix', async t => {
 
   t.plan(3)
 
-  const { events } = await db.query(params)
+  const { events } = await table.query(params)
   t.ok(events)
 
   let count = 0
