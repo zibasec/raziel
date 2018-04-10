@@ -1,6 +1,7 @@
 const test = require('tape')
-const Table = require('.')
+const Database = require('.')
 
+let db = null
 let table = null
 
 test('sanity test', t => {
@@ -9,10 +10,13 @@ test('sanity test', t => {
 })
 
 test('setup', async t => {
-  const { err, db, table: _table } = await new Table('test')
+  db = new Database()
+  t.ok(db.db, 'exposes the underlying database connection')
+
+  const { err: errTable, table: _table } = await db.open('test')
+  t.ok(!errTable, errTable && errTable.message)
+
   table = _table
-  t.ok(db, 'exposes the underlying database connection')
-  t.ok(!err, err && err.message)
   t.end()
 })
 
@@ -20,7 +24,6 @@ test('passing - put', async t => {
   const key = ['a', 'a']
   const value = { foo: 100 }
 
-  console.log(table)
   const { err } = await table.put(key, value)
 
   t.ok(!err, err && err.message)

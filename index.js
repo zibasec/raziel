@@ -40,8 +40,8 @@ const assertKey = (key, resolve) => {
 class Table {
   constructor (table, opts) {
     this.table = table
-    this.opts = opts || { region: 'us-east-1' }
-    this.opts.sep = this.opts.sep || '/'
+    this.opts = opts
+    this.db = opts.db
   }
 
   then (resolve) {
@@ -303,4 +303,26 @@ class Table {
   }
 }
 
-module.exports = Table
+class Database {
+  constructor (opts) {
+    this.opts = opts || { region: 'us-east-1' }
+    this.opts.sep = this.opts.sep || '/'
+    this.db = new AWS.DynamoDB(this.opts)
+  }
+
+  open (table, opts = {}) {
+    if (!table) {
+      throw new Error('table name required')
+    }
+
+    const _opts = Object.assign(this.opts, opts)
+
+    return {
+      async then (resolve) {
+        resolve(await new Table(table, _opts))
+      }
+    }
+  }
+}
+
+module.exports = Database

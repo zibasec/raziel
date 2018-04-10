@@ -11,12 +11,19 @@ A light weight, async/await abstraction for DynamoDB.
 npm install MindPointGroup/raziel
 ```
 
-## OPEN
+## CONSTRUCTOR
+Create a constructor and configure it.
+
+```js
+const Database = require('raziel')
+const db = new Database({ region: 'us-east-1' })
+```
+
+## TABLES
 Create or open a table.
 
 ```js
-const Table = require('raziel')
-const { err, table } = await new Table('imports')
+const { err, table } = await db.open('imports')
 ```
 
 ## PUT
