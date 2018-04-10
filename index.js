@@ -1,14 +1,6 @@
 const AWS = require('aws-sdk')
 const { EventEmitter } = require('events')
 
-if (process.env['AWS_PROFILE']) {
-  const credentials = new AWS.SharedIniFileCredentials({
-    profile: process.env['AWS_PROFILE']
-  })
-
-  AWS.config.credentials = credentials
-}
-
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
 
@@ -305,8 +297,14 @@ class Table {
 
 class Database {
   constructor (opts) {
-    this.opts = opts || { region: 'us-east-1' }
+    this.opts = opts || {}
+    this.opts.region = this.opts.region || 'us-east-1'
     this.opts.sep = this.opts.sep || '/'
+
+    if (opts.credentials) {
+      AWS.config.credentials = opts.credentials
+    }
+
     this.db = new AWS.DynamoDB(this.opts)
   }
 

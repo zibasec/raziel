@@ -1,4 +1,5 @@
 const test = require('tape')
+const AWS = require('aws-sdk')
 const Database = require('.')
 
 let db = null
@@ -10,7 +11,15 @@ test('sanity test', t => {
 })
 
 test('setup', async t => {
-  db = new Database()
+  const opts = {}
+
+  if (process.env['PROFILE']) {
+    opts.credentials = new AWS.SharedIniFileCredentials({
+      profile: process.env['PROFILE']
+    })
+  }
+
+  db = new Database(opts)
   t.ok(db.db, 'exposes the underlying database connection')
 
   const { err: errTable, table: _table } = await db.open('test')
