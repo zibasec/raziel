@@ -15,15 +15,15 @@ npm install MindPointGroup/raziel
 Create or open a table.
 
 ```js
-const Dynamo = require('raziel')
-const { err, db } = await Dynamo('imports')
+const Table = require('raziel')
+const { err, table } = await new Table('imports')
 ```
 
 ## PUT
 Put a key/value.
 
 ```js
-const { err } = await db.put(['a', 'b'], { foo: 100 })
+const { err } = await table.put(['a', 'b'], { foo: 100 })
 ```
 
 A key is input as an array. The first item in the array is the
@@ -36,7 +36,7 @@ Keys are sorted lexicographically and can be queried or looked up.
 Get a key/value
 
 ```js
-const { err, value } = await db.get(['a', 'b'])
+const { err, value } = await table.get(['a', 'b'])
 assert(value === { foo: 100 })
 ```
 
@@ -44,7 +44,7 @@ assert(value === { foo: 100 })
 Delete a key/value
 
 ```js
-const { err } = await db.del(['a', 'b'])
+const { err } = await table.del(['a', 'b'])
 ```
 
 ## BATCH
@@ -57,7 +57,7 @@ const ops = [
   { type: 'put', key: ['b', 'a'], value: { baz: 300 } },
   { type: 'del', key: ['a', 'c'] }
 ]
-const { err } = await db.batch(ops)
+const { err } = await table.batch(ops)
 ```
 
 ## QUERY
@@ -73,7 +73,7 @@ only three records in the database. Two events would be
 emitted by the following query.
 
 ```js
-const { events } = await db.query({ key: ['a'] })
+const { events } = await table.query({ key: ['a'] })
 
 events.on('data', ({ key, value }) => {
   assert(key === ['a', 'a'])
