@@ -69,7 +69,7 @@ const { err } = await table.batch(ops)
 
 ## QUERY
 Get a range of keys and their values. This produces an
-iterator.
+[iterator][0] with a next method that is awaitable.
 
 If the previous batch command was executed, there there were
 only three records in the database. Two events would be
@@ -80,5 +80,9 @@ const iterator = table.query({ key: ['a'] })
 
 while (true) {
   const { err, key, value, done } = await iterator.next()
+
+  if (done) break // only true when there is no more data
 }
 ```
+
+[0]:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols
