@@ -324,7 +324,7 @@ class Database {
     this.opts.region = this.opts.region || 'us-east-1'
     this.opts.sep = this.opts.sep || '/'
 
-    if (opts.credentials) {
+    if (this.opts.credentials) {
       AWS.config.credentials = opts.credentials
     }
 
