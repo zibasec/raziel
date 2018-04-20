@@ -9,23 +9,18 @@ const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
 const ERR_KEY_TYPE = new Error('Expected an array')
 const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
 
-const assertKey = (key, resolve) => {
+const assertKey = key => {
   if (!Array.isArray(key)) {
-    resolve({ err: ERR_KEY_TYPE, key })
-    return false
+    return { err: ERR_KEY_TYPE, key }
   }
 
   if (!(key.length >= 2)) {
-    resolve({ err: ERR_KEY_LEN, key })
-    return false
+    return { err: ERR_KEY_LEN, key }
   }
 
   if (!key[0] || !key[1]) {
-    resolve({ err: ERR_KEY_EMPTY, key })
-    return false
+    return { err: ERR_KEY_EMPTY, key }
   }
-
-  return true
 }
 
 class Table {
@@ -83,92 +78,99 @@ class Table {
     })
   }
 
-  put (key, opts = {}, value) {
-    return new Promise(resolve => {
-      if (!value) {
-        value = opts
-        opts = null
-      }
+  async put (key, opts = {}, value) {
+    if (!value) {
+      value = opts
+      opts = null
+    }
 
-      if (!assertKey(key, resolve)) return
+    const invalidKey = assertKey(key)
+    if (invalidKey) return invalidKey
 
-      const k = key.slice()
-      let v = null
+    const k = key.slice()
+    let v = null
 
-      try {
-        v = JSON.stringify(value)
-      } catch (err) {
-        return resolve({ err })
-      }
+    try {
+      v = JSON.stringify(value)
+    } catch (err) {
+      return { err }
+    }
 
-      const params = {
-        Item: {
-          hkey: { S: k.shift() },
-          rkey: { S: k.join(this.sep) },
-          value: { S: v }
-        },
-        TableName: (opts && opts.table) || this.table
-      }
+    const params = {
+      Item: {
+        hkey: { S: k.shift() },
+        rkey: { S: k.join(this.sep) },
+        value: { S: v }
+      },
+      TableName: (opts && opts.table) || this.table
+    }
 
-      if (opts && opts.notExists) {
-        params.ConditionExpression = NOTEXISTS
-      }
+    if (opts && opts.notExists) {
+      params.ConditionExpression = NOTEXISTS
+    }
 
-      this.db.putItem(params, (err) => {
-        if (err) return resolve({ err })
-        resolve({})
-      })
-    })
+    try {
+      await this.db.putItem(params).promise()
+    } catch (err) {
+      return { err }
+    }
+
+    return {}
   }
 
-  get (key, opts = {}) {
-    return new Promise(resolve => {
-      const k = key.slice()
+  async get (key, opts = {}) {
+    const k = key.slice()
 
-      if (!assertKey(key, resolve)) return
+    const invalidKey = assertKey(key)
+    if (invalidKey) return invalidKey
 
-      const params = {
-        TableName: (opts && opts.table) || this.table,
-        Key: {
-          hkey: { S: k.shift() },
-          rkey: { S: k.join(this.sep) }
-        }
+    const params = {
+      TableName: (opts && opts.table) || this.table,
+      Key: {
+        hkey: { S: k.shift() },
+        rkey: { S: k.join(this.sep) }
       }
+    }
 
-      this.db.getItem(params, (err, data) => {
-        if (err) return resolve({ err })
+    let data = null
 
-        let value = null
+    try {
+      data = await this.db.getItem(params).promise()
+    } catch (err) {
+      return { err }
+    }
 
-        try {
-          value = JSON.parse(data.Item.value.S)
-        } catch (err) {
-          return resolve({ err })
-        }
+    let value = null
 
-        resolve({ value })
-      })
-    })
+    try {
+      value = JSON.parse(data.Item.value.S)
+    } catch (err) {
+      return { err }
+    }
+
+    return { value }
   }
 
-  del (key, opts = {}) {
-    return new Promise(resolve => {
-      if (!assertKey(key, resolve)) return
+  async del (key, opts = {}) {
+    const invalidKey = assertKey(key)
+    if (invalidKey) return invalidKey
 
-      const k = key.slice()
-      const params = {
-        Key: {
-          hkey: { S: k.shift() },
-          rkey: { S: k.join(this.sep) }
-        },
-        TableName: (opts && opts.table) || this.table
-      }
+    const k = key.slice()
+    const params = {
+      Key: {
+        hkey: { S: k.shift() },
+        rkey: { S: k.join(this.sep) }
+      },
+      TableName: (opts && opts.table) || this.table
+    }
 
-      this.db.deleteItem(params, (err) => {
-        if (err) return resolve({ err })
-        resolve({})
-      })
-    })
+    try {
+      await this.db.deleteItem(params).promise()
+    } catch (err) {
+      return { err }
+    }
+
+    return {}
   }
 
   query (opts = {}) {
@@ -214,107 +216,108 @@ class Table {
     let i = 0
 
     return {
-      next: () => ({
-        then (resolve) {
-          if (i < array.length) {
-            const data = array[i++]
+      next: async () => {
+        if (i < array.length) {
+          const data = array[i++]
 
-            return resolve({
-              key: data.key,
-              value: data.value,
-              done: false
-            })
+          return {
+            key: data.key,
+            value: data.value,
+            done: false
           }
-
-          if (complete) {
-            return resolve({ done: true })
-          }
-
-          db[method](params, (err, response) => {
-            if (err) {
-              return resolve({ err })
-            }
-
-            if (!response || !response.Items) {
-              return resolve({ done: true })
-            }
-
-            response.Items.map(item => {
-              let value = null
-
-              try {
-                value = JSON.parse(item.value.S)
-              } catch (err) {
-                return resolve({ err })
-              }
-
-              const key = [item.hkey.S, item.rkey.S]
-              array.push({ key, value })
-            })
-
-            if (typeof response.LastEvaluatedKey === 'undefined') {
-              complete = true
-            }
-
-            const data = array[i++]
-
-            resolve({
-              key: data.key,
-              value: data.value,
-              done: false
-            })
-          })
         }
-      })
+
+        if (complete) {
+          return { done: true }
+        }
+
+        let res = null
+
+        try {
+          res = await db[method](params).promise()
+        } catch (err) {
+          return { err }
+        }
+
+        if (!res || (res.Items && !res.Items.length)) {
+          return { done: true }
+        }
+
+        res.Items.map(item => {
+          let value = null
+
+          try {
+            value = JSON.parse(item.value.S)
+          } catch (err) {
+            return { err }
+          }
+
+          const key = [item.hkey.S, item.rkey.S]
+          array.push({ key, value })
+        })
+
+        if (typeof res.LastEvaluatedKey === 'undefined') {
+          complete = true
+        }
+
+        const data = array[i++]
+
+        return {
+          key: data.key,
+          value: data.value,
+          done: false
+        }
+      }
     }
   }
 
-  batch (ops, opts = {}) {
-    return new Promise(resolve => {
-      const parseOp = op => {
-        if (op.type === 'put') {
-          let v = null
+  async batch (ops, opts = {}) {
+    const parseOp = op => {
+      if (op.type === 'put') {
+        let v = null
 
-          try {
-            v = JSON.stringify(op.value)
-          } catch (err) {
-            return resolve({ err })
-          }
-
-          return {
-            PutRequest: {
-              Item: {
-                hkey: { S: op.key.shift() },
-                rkey: { S: op.key.join(this.sep) },
-                value: { S: v }
-              }
-            }
-          }
+        try {
+          v = JSON.stringify(op.value)
+        } catch (err) {
+          return { err }
         }
 
         return {
-          DeleteRequest: {
-            Key: {
+          PutRequest: {
+            Item: {
               hkey: { S: op.key.shift() },
-              rkey: { S: op.key.join(this.sep) }
+              rkey: { S: op.key.join(this.sep) },
+              value: { S: v }
             }
           }
         }
       }
 
-      const table = (opts && opts.table) || this.table
-
-      const params = {
-        RequestItems: {
-          [table]: ops.map(parseOp)
+      return {
+        DeleteRequest: {
+          Key: {
+            hkey: { S: op.key.shift() },
+            rkey: { S: op.key.join(this.sep) }
+          }
         }
       }
+    }
 
-      this.db.batchWriteItem(params, (err) => {
-        if (err) return resolve({ err })
-        return resolve({})
-      })
-    })
+    const table = (opts && opts.table) || this.table
+
+    const params = {
+      RequestItems: {
+        [table]: ops.map(parseOp)
+      }
+    }
+
+    try {
+      await this.db.batchWriteItem(params).promise()
+    } catch (err) {
+      return { err }
+    }
+
+    return {}
   }
 }
 
