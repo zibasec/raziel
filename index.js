@@ -99,7 +99,7 @@ class Table {
     const params = {
       Item: {
         hkey: { S: k.shift() },
-        rkey: { S: k.join(this.sep) },
+        rkey: { S: k.join(this.opts.sep) },
         value: { S: v }
       },
       TableName: (opts && opts.table) || this.table
@@ -128,7 +128,7 @@ class Table {
       TableName: (opts && opts.table) || this.table,
       Key: {
         hkey: { S: k.shift() },
-        rkey: { S: k.join(this.sep) }
+        rkey: { S: k.join(this.opts.sep) }
       }
     }
 
@@ -159,7 +159,7 @@ class Table {
     const params = {
       Key: {
         hkey: { S: k.shift() },
-        rkey: { S: k.join(this.sep) }
+        rkey: { S: k.join(this.opts.sep) }
       },
       TableName: (opts && opts.table) || this.table
     }
@@ -286,7 +286,7 @@ class Table {
           PutRequest: {
             Item: {
               hkey: { S: op.key.shift() },
-              rkey: { S: op.key.join(this.sep) },
+              rkey: { S: op.key.join(this.opts.sep) },
               value: { S: v }
             }
           }
@@ -297,7 +297,7 @@ class Table {
         DeleteRequest: {
           Key: {
             hkey: { S: op.key.shift() },
-            rkey: { S: op.key.join(this.sep) }
+            rkey: { S: op.key.join(this.opts.sep) }
           }
         }
       }
