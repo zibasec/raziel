@@ -95,6 +95,45 @@ test('passing - batch', async t => {
   t.end()
 })
 
+test('passing - multiget', async t => {
+  const keys = [
+    ['a', 'a'],
+    ['a', 'b'],
+    ['a', 'c'],
+    ['b', 'a']
+  ]
+
+  const { err, data } = await table.get(keys)
+  t.ok(!err, err && err.message)
+  t.ok(data)
+  t.ok(Array.isArray(data))
+  t.equal(data.length, 4)
+  t.end()
+})
+
+test('passing - multiget with holes', async t => {
+  const keys = [
+    ['a', 'a'],
+    ['a', 'x'],
+    ['b', 'a']
+  ]
+
+  const { err, data } = await table.get(keys)
+  t.ok(!err, err && err.message)
+  t.ok(data)
+  t.ok(Array.isArray(data))
+  t.equal(data.length, 2)
+  t.end()
+})
+
+test('failing - multiget without keys', async t => {
+  const keys = []
+
+  const { err } = await table.get(keys)
+  t.ok(err, err && err.message)
+  t.end()
+})
+
 test('passing - query without prefix', async t => {
   const params = {}
 
@@ -134,7 +173,6 @@ test('passing - query with hash component', async t => {
     if (done) break
     count++
 
-    console.log(key, value)
     t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
@@ -160,7 +198,6 @@ test('passing - query with hash and range components', async t => {
     if (done) break
     count++
 
-    console.log(key, value)
     t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')

@@ -118,7 +118,57 @@ class Table {
     return {}
   }
 
+  async _gets (keys, opts = {}) {
+    const tableName = (opts && opts.table) || this.table
+    const spec = { Keys: [] }
+
+    const params = {
+      RequestItems: {
+        [tableName]: spec
+      }
+    }
+
+    spec.Keys = keys.slice().map(key => {
+      return {
+        hkey: { S: key.shift() },
+        rkey: { S: key.join(this.opts.sep) }
+      }
+    })
+
+    let data = null
+
+    try {
+      data = await this.db.batchGetItem(params).promise()
+    } catch (err) {
+      return { err }
+    }
+
+    let pairs = []
+
+    if (!data.Responses[tableName].length) {
+      return { data: pairs }
+    }
+
+    pairs = data.Responses[tableName].map(item => {
+      const pair = { key: [item.hkey.S, item.rkey.S] }
+
+      try {
+        pair.value = JSON.parse(item.value.S)
+      } catch (err) {
+        pair.value = item.value.S
+      }
+
+      return pair
+    })
+
+    return { data: pairs }
+  }
+
   async get (key, opts = {}) {
+    if (Array.isArray(key[0])) {
+      return this._gets(key, opts)
+    }
+
     const k = key.slice()
 
     const invalidKey = assertKey(key)

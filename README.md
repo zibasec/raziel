@@ -30,7 +30,7 @@ const { err, table } = await db.open('imports')
 Put a key/value.
 
 ```js
-const { err } = await table.put(['a', 'b'], { foo: 100 })
+const { err } = await table.put(['a', 'a'], { foo: 100 })
 ```
 
 A key is input as an array. The first item in the array is the
@@ -45,6 +45,22 @@ Get a key/value
 ```js
 const { err, value } = await table.get(['a', 'b'])
 assert(value === { foo: 100 })
+```
+
+## GET MULTIPLE VALUES AT ONCE
+Specify an array of keys as the first argument to the `get` method.
+
+If a requested item does not exist, it is not returned in the result.
+Requests for nonexistent items consume the minimum read capacity units
+according to the type of read (this is how the Dynamodb aws-sdk works).
+
+Gets are limited to 100 keys at a time (specified in the aws api).
+
+```js
+const { err, data } = await table.get([['a', 'a'], ['a', 'b']])
+
+assert.deepEqual(data[0].key, ['a', 'a'])
+assert.deepEqual(data[0].value, { foo: 100 })
 ```
 
 ## DEL
