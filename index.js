@@ -58,7 +58,15 @@ class Table {
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5
       },
-      TableName: this.table
+      TableName: this.table,
+      SSESpecification: this.opts.encrypted
+    }
+
+    if (this.opts.streaming) {
+      params.StreamSpecification = {
+        StreamEnabled: true,
+        StreamViewType: this.opts.streaming
+      }
     }
 
     const table = this

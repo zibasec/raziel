@@ -20,10 +20,15 @@ const db = new Database({ region: 'us-east-1' })
 ```
 
 ## TABLES
-Create or open a table.
+Create or open a table. The optional options object may include...
 
 ```js
-const { err, table } = await db.open('imports')
+const options = {
+  encrypted: true || false,
+  streaming: 'NEW_IMAGE' || 'OLD_IMAGE' || 'NEW_AND_OLD_IMAGES' || 'KEYS_ONLY'
+}
+
+const { err, table } = await db.open('foo', options)
 ```
 
 ## PUT

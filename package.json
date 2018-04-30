@@ -10,8 +10,8 @@
     "type": "git",
     "url": "git+https://github.com/MindPointGroup/raziel.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "MindPointGroup",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/MindPointGroup/raziel/issues"
   },
