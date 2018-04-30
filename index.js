@@ -76,7 +76,7 @@ class Table {
 
     const table = this
 
-    if (this.opts.assumeExists || createdTable) {
+    if (!this.opts.createIfNotExists || createdTable) {
       return resolve({ db: this.db, table })
     }
 

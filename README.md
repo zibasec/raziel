@@ -25,7 +25,8 @@ Create or open a table. The optional options object may include...
 ```js
 const options = {
   encrypted: true || false,
-  streaming: 'NEW_IMAGE' || 'OLD_IMAGE' || 'NEW_AND_OLD_IMAGES' || 'KEYS_ONLY'
+  streaming: 'NEW_IMAGE' || 'OLD_IMAGE' || 'NEW_AND_OLD_IMAGES' || 'KEYS_ONLY',
+  createIfNotExists: true || false
 }
 
 const { err, table } = await db.open('foo', options)

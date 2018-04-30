@@ -127,9 +127,11 @@ test('passing - multiget with holes', async t => {
 })
 
 test('passing - enable encryption on table', async t => {
-  const { err: errTable, table } = await db.open('test_encrypted', { encrypted: true })
+  const { err: errTable, table } = await db.open('test_encrypted', { encrypted: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
   t.ok(table)
+  const { err: errPut } = await table.put(['a', 'a'], { foo: 100 })
+  t.ok(!errPut, errPut && errPut.message)
   t.end()
 })
 
