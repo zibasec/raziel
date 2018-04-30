@@ -126,6 +126,13 @@ test('passing - multiget with holes', async t => {
   t.end()
 })
 
+test('passing - enable encryption on table', async t => {
+  const { err: errTable, table } = await db.open('test_encrypted', { encrypted: true })
+  t.ok(!errTable, errTable && errTable.message)
+  t.ok(table)
+  t.end()
+})
+
 test('failing - multiget without keys', async t => {
   const keys = []
 

@@ -26,7 +26,7 @@ const assertKey = key => {
 class Table {
   constructor (table, opts) {
     this.table = table
-    this.opts = opts
+    this.opts = opts || {}
     this.db = opts.db
   }
 
@@ -58,8 +58,13 @@ class Table {
         ReadCapacityUnits: 5,
         WriteCapacityUnits: 5
       },
-      TableName: this.table,
-      SSESpecification: this.opts.encrypted
+      TableName: this.table
+    }
+
+    if (this.opts.encrypted) {
+      params.SSESpecification = {
+        Enabled: true
+      }
     }
 
     if (this.opts.streaming) {
