@@ -278,10 +278,19 @@ class Table {
     let complete = false
     let i = 0
 
+    const asyncIterator = Symbol.asyncIterator && !opts.legacy
+
     return {
+      [Symbol.asyncIterator] () {
+        return this
+      },
       next: async () => {
         if (i < array.length) {
           const data = array[i++]
+
+          if (asyncIterator) {
+            return { value: data }
+          }
 
           return {
             key: data.key,
@@ -299,6 +308,9 @@ class Table {
         try {
           res = await db[method](params).promise()
         } catch (err) {
+          if (asyncIterator) {
+            throw err
+          }
           return { err }
         }
 
@@ -312,6 +324,9 @@ class Table {
           try {
             value = JSON.parse(item.value.S)
           } catch (err) {
+            if (asyncIterator) {
+              throw err
+            }
             return { err }
           }
 
@@ -324,6 +339,10 @@ class Table {
         }
 
         const data = array[i++]
+
+        if (asyncIterator) {
+          return { value: data }
+        }
 
         return {
           key: data.key,

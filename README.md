@@ -100,6 +100,15 @@ emitted by the following query.
 ```js
 const iterator = table.query({ key: ['a'] })
 
+for await (const { key, value } of iterator) {
+  console.log(key, value)
+}
+```
+
+In node versions less than 10.1.x
+```js
+const iterator = table.query({ key: ['a'] })
+
 while (true) {
   const { err, key, value, done } = await iterator.next()
 

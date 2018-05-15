@@ -86,8 +86,8 @@ test('passing - batch', async t => {
   const ops = [
     { type: 'put', key: ['a', 'a'], value: 0 },
     { type: 'put', key: ['a', 'b'], value: 0 },
-    { type: 'put', key: ['a', 'c'], value: 0 },
-    { type: 'put', key: ['b', 'a'], value: 0 }
+    { type: 'put', key: ['a', 'c'], value: 100 },
+    { type: 'put', key: ['b', 'a'], value: 100 }
   ]
 
   const { err: errBatch } = await table.batch(ops)
@@ -144,7 +144,7 @@ test('failing - multiget without keys', async t => {
 })
 
 test('passing - query without prefix', async t => {
-  const params = {}
+  const params = { legacy: true }
 
   const iterator = table.query(params)
   t.ok(iterator, 'has an iterator')
@@ -168,7 +168,8 @@ test('passing - query without prefix', async t => {
 
 test('passing - query with hash component', async t => {
   const params = {
-    key: ['a']
+    key: ['a'],
+    legacy: true
   }
 
   const iterator = table.query(params)
@@ -193,7 +194,8 @@ test('passing - query with hash component', async t => {
 
 test('passing - query with hash and range components', async t => {
   const params = {
-    key: ['a', 'b']
+    key: ['a', 'b'],
+    legacy: true
   }
 
   const iterator = table.query(params)
@@ -213,5 +215,24 @@ test('passing - query with hash and range components', async t => {
   }
 
   t.equal(count, 1)
+  t.end()
+})
+
+test('passing - async iterator', async t => {
+  const params = {
+    key: ['a']
+  }
+
+  const iterator = table.query(params)
+  t.ok(iterator, 'has an iterator')
+  let count = 0
+
+  for await (const { key, value } of iterator) {
+    count++
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 3)
   t.end()
 })
