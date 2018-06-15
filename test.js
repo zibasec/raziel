@@ -223,14 +223,15 @@ test('passing - async iterator', async t => {
     key: ['a']
   }
 
-  const iterator = table.query(params)
+  const it = table.query(params)
   t.ok(iterator, 'has an iterator')
   let count = 0
 
-  for await (const { key, value } of iterator) {
+  // eslint-disable-next-line no-alert
+  for await (const { k, v } of it) {
     count++
-    t.notEqual(key, undefined, 'has a key')
-    t.notEqual(value, undefined, 'has a value')
+    t.notEqual(k, undefined, 'has a key')
+    t.notEqual(v, undefined, 'has a value')
   }
 
   t.equal(count, 3)
