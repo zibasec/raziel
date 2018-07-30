@@ -203,7 +203,9 @@ class Table {
       return { err }
     }
 
-    if (!data || !data.Item) return { notFound: true }
+    if (!data || !data.Item) {
+      return { err: { notFound: true } }
+    }
 
     let value = null
 
