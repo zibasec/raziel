@@ -203,6 +203,8 @@ class Table {
       return { err }
     }
 
+    if (!data || !data.Item) return { notFound: true }
+
     let value = null
 
     try {
