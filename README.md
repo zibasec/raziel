@@ -116,4 +116,17 @@ while (true) {
 }
 ```
 
+## Working with local DynamoDB
+If you would like to use [DynamoDB Local][1] you will want to set the following environment variables.
+
+```
+LOCAL_DYNAMO=true
+LOCAL_DYNAMO_PORT=8000
+```
+
+`LOCAL_DYNAMO_PORT` is optional and defaults to 8000 which is the default port.
+
+**NOTE:** This does not currently validate that a proper DynamoDB process is listenting on 8000 (or specified port) it only checkes that _something_ is listenting on the port.
+
 [0]:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols
+[1]:https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html

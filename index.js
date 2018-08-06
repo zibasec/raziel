@@ -1,9 +1,8 @@
 const AWS = require('aws-sdk')
+const { createServer } = require('net')
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
-
-let createdTable = process.env['NODE_ENV'] === 'production'
 
 const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
 const ERR_KEY_TYPE = new Error('Expected an array')
@@ -28,6 +27,7 @@ class Table {
     this.table = table
     this.opts = opts || {}
     this.db = opts.db
+    this.waitFor = opts.waitFor || false
   }
 
   then (resolve) {
@@ -76,7 +76,7 @@ class Table {
 
     const table = this
 
-    if (!this.opts.createIfNotExists || createdTable) {
+    if (!this.opts.createIfNotExists) {
       return resolve({ db: this.db, table })
     }
 
@@ -85,9 +85,14 @@ class Table {
         return resolve({ err })
       }
 
-      createdTable = true
-
-      resolve({ db: this.db, table })
+      if (this.waitFor) {
+        this.db.waitFor('tableExists', { TableName: this.table }, (err, res) => {
+          if (err) resolve({ err })
+          resolve({ db: this.db, table })
+        })
+      } else {
+        resolve({ db: this.db, table })
+      }
     })
   }
 
@@ -420,9 +425,45 @@ class Database {
     this.db = new AWS.DynamoDB(this.opts)
   }
 
-  open (table, opts = {}) {
+  async localDynamoAvailable (port) {
+    try {
+      const portTaken = async (port) => new Promise((resolve, reject) => {
+        const scanner = createServer()
+          .once('error', err => {
+            if (err.code === 'EADDRINUSE') {
+              resolve(true)
+            }
+            reject(err)
+          })
+          .once('listening', () => {
+            scanner.once('close', () => {
+              resolve(false)
+            }).close()
+          })
+          .listen(port)
+      })
+
+      const isAvailable = await portTaken(port)
+      return { isAvailable: Boolean(isAvailable) }
+    } catch (err) {
+      return { err }
+    }
+  }
+
+  async open (table, opts = {}) {
     if (!table) {
       throw new Error('table name required')
+    }
+
+    if (process.env['LOCAL_DYNAMO']) {
+      const dynamoPort = process.env['LOCAL_DYNAMO_PORT'] || 8000
+      const { isAvailable } = await this.localDynamoAvailable(dynamoPort)
+
+      if (isAvailable) {
+        opts.endpoint = `http://localhost:${dynamoPort}`
+      } else {
+        return { err: new Error(`LOCAL_DYNAMO environment variable detected but no local dynamoDB was found listening on port ${dynamoPort}. If you intend to talk to 'real' DynamoDB in AWS, please unset the environment variable. Otherwise ensure you have it running and if you have it listening to a port other than 8000 (the default) please ensure you are using the LOCAL_DYNAMO_PORT environment variable and try again.`) }
+      }
     }
 
     const _opts = Object.assign(this.opts, opts)
