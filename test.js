@@ -22,7 +22,7 @@ test('setup', async t => {
   db = new Database(opts)
   t.ok(db.db, 'exposes the underlying database connection')
 
-  const { err: errTable, table: _table } = await db.open('test')
+  const { err: errTable, table: _table } = await db.open('test', { waitFor: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
 
   table = _table
@@ -127,7 +127,7 @@ test('passing - multiget with holes', async t => {
 })
 
 test('passing - enable encryption on table', async t => {
-  const { err: errTable, table } = await db.open('test_encrypted', { encrypted: true, createIfNotExists: true })
+  const { err: errTable, table } = await db.open('test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
   t.ok(table)
   const { err: errPut } = await table.put(['a', 'a'], { foo: 100 })
@@ -219,19 +219,20 @@ test('passing - query with hash and range components', async t => {
 })
 
 test('passing - async iterator', async t => {
+
   const params = {
     key: ['a']
   }
 
   const it = table.query(params)
-  t.ok(iterator, 'has an iterator')
+  t.ok(it, 'has an iterator')
   let count = 0
 
   // eslint-disable-next-line no-alert
-  for await (const { k, v } of it) {
+  for await (const { key, value } of it) {
     count++
-    t.notEqual(k, undefined, 'has a key')
-    t.notEqual(v, undefined, 'has a value')
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
   }
 
   t.equal(count, 3)
