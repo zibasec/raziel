@@ -80,16 +80,18 @@ class Table {
       return resolve({ db: this.db, table })
     }
 
-    this.db.createTable(params, (err, data) => {
+    this.db.createTable(params, async (err, data) => {
       if (err && err.name !== 'ResourceInUseException') {
         return resolve({ err })
       }
 
       if (this.waitFor) {
-        this.db.waitFor('tableExists', { TableName: this.table }, (err, res) => {
-          if (err) resolve({ err })
+        try {
+          await this.db.waitFor('tableExists', { TableName: this.table }).promise()
           resolve({ db: this.db, table })
-        })
+        } catch (err) {
+          resolve({ err })
+        }
       } else {
         resolve({ db: this.db, table })
       }
