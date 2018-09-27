@@ -5,6 +5,7 @@
   "bin": "bin/raziel",
   "main": "index.js",
   "scripts": {
+    "pretest": "standard",
     "test": "node --harmony-async-iteration test.js || node test.js"
   },
   "repository": {
@@ -18,7 +19,7 @@
   },
   "homepage": "https://github.com/MindPointGroup/raziel#readme",
   "devDependencies": {
-    "standard": "^11.0.0",
+    "standard": "^11.0.1",
     "tape": "^4.9.0"
   },
   "dependencies": {

@@ -61,6 +61,7 @@ async function main () {
     const it = table.query(params)
     let count = 0
 
+    // eslint-disable-next-line no-alert
     for await (const { key, value } of it) {
       if (argv.limit && (count++ === argv.limit)) break
       process.stdout.write(JSON.stringify({ key, value }) + '\n')
