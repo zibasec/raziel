@@ -238,3 +238,11 @@ test('passing - async iterator', async t => {
   t.equal(count, 3)
   t.end()
 })
+
+test('passing - count', async t => {
+
+  const { err, count } = await table.count()
+  t.ok(!err, err && err.message)
+  t.equal(count, 4, 'count is correct')
+  t.end()
+})

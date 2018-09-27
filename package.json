@@ -2,6 +2,7 @@
   "name": "raziel",
   "version": "2.0.2",
   "description": "",
+  "bin": "bin/raziel",
   "main": "index.js",
   "scripts": {
     "test": "node --harmony-async-iteration test.js || node test.js"

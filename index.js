@@ -247,6 +247,33 @@ class Table {
     return {}
   }
 
+  async count (opts, progress) {
+    const params = {
+      TableName: (opts && opts.table) || this.table,
+      Select: 'COUNT'
+    }
+
+    let count = 0
+
+    while (true) {
+      let data = null
+
+      try {
+        data = await this.db.scan(params).promise()
+      } catch (err) {
+        return { err }
+      }
+
+      count += data.Count
+
+      if (!data.LastEvaluatedKey) break
+      params.ExclusiveStartKey = data.LastEvaluatedKey
+      progress()
+    }
+
+    return { count }
+  }
+
   query (opts = {}) {
     const params = {
       TableName: (opts && opts.table) || this.table,
@@ -347,6 +374,8 @@ class Table {
 
         if (typeof res.LastEvaluatedKey === 'undefined') {
           complete = true
+        } else {
+          params.ExclusiveStartKey = res.LastEvaluatedKey
         }
 
         const data = array[i++]
@@ -464,7 +493,15 @@ class Database {
       if (isAvailable) {
         opts.endpoint = `http://localhost:${dynamoPort}`
       } else {
-        return { err: new Error(`LOCAL_DYNAMO environment variable detected but no local dynamoDB was found listening on port ${dynamoPort}. If you intend to talk to 'real' DynamoDB in AWS, please unset the environment variable. Otherwise ensure you have it running and if you have it listening to a port other than 8000 (the default) please ensure you are using the LOCAL_DYNAMO_PORT environment variable and try again.`) }
+        return {
+          err: new Error(`
+            LOCAL_DYNAMO environment variable detected but no local dynamoDB was
+            found listening on port ${dynamoPort}. If you intend to talk to 'real'
+            DynamoDB in AWS, please unset the environment variable. Otherwise
+            ensure you have it running and if you have it listening to a port
+            other than 8000 (the default) please ensure you are using the
+            LOCAL_DYNAMO_PORT environment variable and try again.`)
+        }
       }
     }
 
