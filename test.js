@@ -5,6 +5,8 @@ const Database = require('.')
 let db = null
 let table = null
 
+const sleep = t => new Promise(resolve => setTimeout(resolve, t))
+
 test('sanity test', t => {
   t.ok(true)
   t.end()
@@ -22,7 +24,13 @@ test('setup', async t => {
   db = new Database(opts)
   t.ok(db.db, 'exposes the underlying database connection')
 
-  const { err: errTable, table: _table } = await db.open('test', { waitFor: true, createIfNotExists: true })
+  const params = {
+    waitFor: true,
+    createIfNotExists: true,
+    ttl: true
+  }
+
+  const { err: errTable, table: _table } = await db.open('test', params)
   t.ok(!errTable, errTable && errTable.message)
 
   table = _table
@@ -219,7 +227,6 @@ test('passing - query with hash and range components', async t => {
 })
 
 test('passing - async iterator', async t => {
-
   const params = {
     key: ['a']
   }
@@ -240,9 +247,39 @@ test('passing - async iterator', async t => {
 })
 
 test('passing - count', async t => {
-
   const { err, count } = await table.count()
   t.ok(!err, err && err.message)
   t.equal(count, 4, 'count is correct')
+  t.end()
+})
+
+//
+// This can not be tested. Dynamo doesn't delete the keys immediately, only
+// within 48 hours. So instead we build in some logic to check a ttl when doing
+// reads.
+//
+// https://amzn.to/2NuE11q
+//
+test('passing - ttl', async t => {
+  const key = ['a', 'a']
+  const expected = { deletable: true }
+
+  {
+    const { err } = await table.put(key, { ttl: '+4s' }, expected)
+    t.ok(!err, err && err.message)
+  }
+
+  {
+    const { err } = await table.get(key)
+    t.ok(!err, 'key/value was added')
+  }
+
+  {
+    await sleep(1e4)
+    const { err } = await table.get(key)
+    t.ok(err, 'there was an expected error')
+    t.ok(err.notFound, 'key/value was removed')
+  }
+
   t.end()
 })

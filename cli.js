@@ -5,13 +5,13 @@ const pkg = require('./package.json')
 const argv = minimist(process.argv.slice(2))
 
 const db = new Database({
-  region: argv.region || 'us-east-1'
+  region: argv.region || 'us-west-2'
 })
 
 if (argv.h || argv.help || !argv._.length) {
   const help = `
   Usage:
-    raziel put <table> <hkey/rkey> <value>
+    raziel put <table> <hkey/rkey> <value> [--ttl <n>]
     raziel get <table> <hkey[/rkey]> [--limit <n>]
     raziel del <table> <hkey[/rkey]> [--limit <n>]
     raziel del <table>
@@ -42,7 +42,7 @@ async function main () {
   if (command === 'put') {
     const key = argv._[2].split('/')
     const value = argv._[3]
-    const { err } = await table.put(key, value)
+    const { err } = await table.put(key, { ttl: argv.ttl }, value)
 
     if (err) {
       console.log(err)
@@ -53,15 +53,9 @@ async function main () {
 
   if (command === 'get') {
     const key = argv._[2] ? argv._[2].split('/') : []
-
-    const params = {
-      key
-    }
-
-    const it = table.query(params)
+    const it = table.query({ key })
     let count = 0
 
-    // eslint-disable-next-line no-alert
     for await (const { key, value } of it) {
       if (argv.limit && (count++ === argv.limit)) break
       process.stdout.write(JSON.stringify({ key, value }) + '\n')
@@ -81,14 +75,16 @@ async function main () {
       process.exit(1)
     }
 
-    console.log(`${count}`)
+    process.stdout.write(`${count}\n`)
 
     process.exit(0)
   }
 
   const batch = []
   let deleted = 0
-  let params = {}
+  let params = {
+    key: []
+  }
 
   if (argv._[2]) {
     params = {
@@ -96,10 +92,10 @@ async function main () {
     }
   }
 
-  const it = table.query({ key: [] })
+  const it = table.query(params)
 
   if (command === 'del') {
-    for await (const { key, value } of it) {
+    for await (const { key } of it) {
       if (batch.length === 25) {
         const { err } = await table.batch(batch)
 

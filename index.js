@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk')
+const dateAt = require('date-at')
 const { createServer } = require('net')
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
@@ -30,7 +31,7 @@ class Table {
     this.waitFor = opts.waitFor || false
   }
 
-  then (resolve) {
+  async then (resolve) {
     this.db = new AWS.DynamoDB(this.opts)
 
     const params = {
@@ -80,22 +81,56 @@ class Table {
       return resolve({ db: this.db, table })
     }
 
-    this.db.createTable(params, async (err, data) => {
-      if (err && err.name !== 'ResourceInUseException') {
+    try {
+      await this.db.createTable(params).promise()
+    } catch (err) {
+      if (err.name !== 'ResourceInUseException') {
+        return resolve({ err })
+      }
+    }
+
+    if (this.opts.ttl) {
+      let enabled = false
+
+      try {
+        const params = { TableName: this.table }
+        const data = await this.db.describeTimeToLive(params).promise()
+        enabled = data &&
+          data.TimeToLiveDescription &&
+          data.TimeToLiveDescription.TimeToLiveStatus &&
+          data.TimeToLiveDescription.TimeToLiveStatus === 'ENABLED'
+      } catch (err) {
         return resolve({ err })
       }
 
-      if (this.waitFor) {
-        try {
-          await this.db.waitFor('tableExists', { TableName: this.table }).promise()
-          resolve({ db: this.db, table })
-        } catch (err) {
-          resolve({ err })
+      if (!enabled) {
+        const params = {
+          TableName: this.table,
+          TimeToLiveSpecification: {
+            AttributeName: 'ttl',
+            Enabled: true
+          }
         }
-      } else {
-        resolve({ db: this.db, table })
+
+        try {
+          await this.db.updateTimeToLive(params).promise()
+        } catch (err) {
+          return resolve({ err })
+        }
       }
-    })
+    }
+
+    if (this.waitFor) {
+      try {
+        const params = { TableName: this.table }
+        await this.db.waitFor('tableExists', params).promise()
+        resolve({ db: this.db, table })
+      } catch (err) {
+        resolve({ err })
+      }
+    } else {
+      resolve({ db: this.db, table })
+    }
   }
 
   async put (key, opts = {}, value) {
@@ -123,6 +158,12 @@ class Table {
         value: { S: v }
       },
       TableName: (opts && opts.table) || this.table
+    }
+
+    if (opts && opts.ttl) {
+      params.Item.ttl = {
+        N: String(dateAt(opts.ttl).getTime() / 1000)
+      }
     }
 
     if (opts && opts.notExists) {
@@ -172,6 +213,12 @@ class Table {
     pairs = data.Responses[tableName].map(item => {
       const pair = { key: [item.hkey.S, item.rkey.S] }
 
+      if (item.ttl) {
+        const then = new Date(Number(item.ttl.N) * 1000)
+        const now = new Date()
+        if (then <= now) return null
+      }
+
       try {
         pair.value = JSON.parse(item.value.S)
       } catch (err) {
@@ -181,7 +228,7 @@ class Table {
       return pair
     })
 
-    return { data: pairs }
+    return { data: pairs.filter(Boolean) }
   }
 
   async get (key, opts = {}) {
@@ -208,6 +255,12 @@ class Table {
       data = await this.db.getItem(params).promise()
     } catch (err) {
       return { err }
+    }
+
+    if (data && data.Item && data.Item.ttl) {
+      const then = new Date(Number(data.Item.ttl.N) * 1000)
+      const now = new Date()
+      if (then <= now) data = null
     }
 
     if (!data || !data.Item) {
@@ -404,7 +457,7 @@ class Table {
           return { err }
         }
 
-        return {
+        const o = {
           PutRequest: {
             Item: {
               hkey: { S: op.key.shift() },
@@ -413,6 +466,14 @@ class Table {
             }
           }
         }
+
+        if (opts && opts.ttl) {
+          o.PutRequest.Item.ttl = {
+            N: String(dateAt(opts.ttl).getTime() / 1000)
+          }
+        }
+
+        return o
       }
 
       return {
