@@ -104,10 +104,10 @@ async function main () {
           process.exit(1)
         }
 
+        batch.length = 0
         deleted += 25
       }
 
-      batch.length = 0
       batch.push({ type: 'del', key })
     }
 
