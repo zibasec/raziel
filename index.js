@@ -9,6 +9,8 @@ const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
 const ERR_KEY_TYPE = new Error('Expected an array')
 const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
 
+const clone = o => JSON.parse(JSON.stringify(o))
+
 const assertKey = key => {
   if (!Array.isArray(key)) {
     return { err: ERR_KEY_TYPE, key }
@@ -133,7 +135,7 @@ class Table {
     }
   }
 
-  async put (key, opts = {}, value) {
+  async put (key, opts, value) {
     if (!value) {
       value = opts
       opts = null
@@ -300,33 +302,6 @@ class Table {
     return {}
   }
 
-  async count (opts, progress) {
-    const params = {
-      TableName: (opts && opts.table) || this.table,
-      Select: 'COUNT'
-    }
-
-    let count = 0
-
-    while (true) {
-      let data = null
-
-      try {
-        data = await this.db.scan(params).promise()
-      } catch (err) {
-        return { err }
-      }
-
-      count += data.Count
-
-      if (!data.LastEvaluatedKey) break
-      params.ExclusiveStartKey = data.LastEvaluatedKey
-      progress()
-    }
-
-    return { count }
-  }
-
   query (opts = {}) {
     const params = {
       TableName: (opts && opts.table) || this.table,
@@ -338,8 +313,8 @@ class Table {
 
     opts.key = opts.key || []
 
-    const key = opts.key.shift()
-    const prefix = opts.key.join('/')
+    let key = opts.key.shift()
+    let prefix = opts.key.join('/')
 
     if (prefix) {
       params.ExpressionAttributeValues = {
@@ -446,8 +421,37 @@ class Table {
     }
   }
 
+  async count (opts, progress) {
+    const params = {
+      TableName: (opts && opts.table) || this.table,
+      Select: 'COUNT'
+    }
+
+    let count = 0
+
+    while (true) {
+      let data = null
+
+      try {
+        data = await this.db.scan(params).promise()
+      } catch (err) {
+        return { err }
+      }
+
+      count += data.Count
+
+      if (!data.LastEvaluatedKey) break
+      params.ExclusiveStartKey = data.LastEvaluatedKey
+      progress()
+    }
+
+    return { count }
+  }
+
   async batch (ops, opts = {}) {
     const parseOp = op => {
+      op = clone(op)
+
       if (op.type === 'put') {
         let v = null
 
@@ -467,9 +471,9 @@ class Table {
           }
         }
 
-        if (opts && opts.ttl) {
+        if (op.ttl) {
           o.PutRequest.Item.ttl = {
-            N: String(dateAt(opts.ttl).getTime() / 1000)
+            N: String(dateAt(op.ttl).getTime() / 1000)
           }
         }
 
@@ -555,13 +559,14 @@ class Database {
         opts.endpoint = `http://localhost:${dynamoPort}`
       } else {
         return {
-          err: new Error(`
-            LOCAL_DYNAMO environment variable detected but no local dynamoDB was
-            found listening on port ${dynamoPort}. If you intend to talk to 'real'
-            DynamoDB in AWS, please unset the environment variable. Otherwise
-            ensure you have it running and if you have it listening to a port
-            other than 8000 (the default) please ensure you are using the
-            LOCAL_DYNAMO_PORT environment variable and try again.`)
+          err: new Error([
+            `LOCAL_DYNAMO environment variable detected but no local dynamoDB`,
+            `was found listening on port ${dynamoPort}. If you intend to talk to`,
+            `'real' DynamoDB in AWS, please unset the environment variable.`,
+            `Otherwise ensure you have it running and if you have it listening`,
+            `to a port other than 8000 (the default) please ensure you are using`,
+            `the LOCAL_DYNAMO_PORT environment variable and try again.`
+          ].join(''))
         }
       }
     }

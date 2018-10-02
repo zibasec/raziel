@@ -283,3 +283,36 @@ test('passing - ttl', async t => {
 
   t.end()
 })
+
+test('passing - ttl via batch a operation', async t => {
+  const key = ['a', 'a']
+  const expected = { deletable: true }
+
+  const batch = [
+    {
+      type: 'put',
+      key,
+      ttl: '+4s',
+      value: expected
+    }
+  ]
+
+  {
+    const { err } = await table.batch(batch)
+    t.ok(!err, err && err.message)
+  }
+
+  {
+    const { err } = await table.get(key)
+    t.ok(!err, 'key/value was added')
+  }
+
+  {
+    await sleep(1e4)
+    const { err } = await table.get(key)
+    t.ok(err, 'there was an expected error')
+    t.ok(err.notFound, 'key/value was removed')
+  }
+
+  t.end()
+})
