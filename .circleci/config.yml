@@ -1,52 +1,62 @@
-workflows:
-  version: 2
-  node-multi-build:
-    jobs:
-      - node-lambda
-      - node-v8
-      - node-v10
+### Common Config ###
+node-base: &node-base
+  steps:
+    - checkout
+    - run:
+        name: Update npm
+        command: 'sudo npm install -g npm@latest'
 
+    - restore_cache:
+        key: dependency-cache-{{ checksum "package.json" }}
+
+    - run:
+        name: Install dependencies
+        command: npm install
+
+    - save_cache:
+        key: dependency-cache-{{ checksum "package.json" }}
+        paths:
+          - node_modules
+
+    - run:
+        name: Test
+        command: npm test
+### end common config ###
+
+## CircleCI Settings
 version: 2
 jobs:
-  node-base: &node-base
-    docker:
-      - image: node
-    steps:
-      - run:
-          name: Versions
-          command: npm version
-      - checkout
-      - restore_cache:
-          keys:
-            - v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-lock-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "package-lock.json" }}
-            - v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-lock-master-{{ .Environment.CIRCLE_JOB }}-{{ checksum "package-lock.json" }}
-            - v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-cache-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
-            - v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-cache-master-{{ .Environment.CIRCLE_JOB }}
-      - run:
-          name: Install dependencies
-          command: npm install
-      - run:
-          name: Test
-          command: npm test
-      - save_cache:
-          key: v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-lock-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "package-lock.json" }}
-          paths:
-            - node_modules
-      - save_cache:
-          key: v{{ .Environment.CIRCLE_CACHE_VERSION }}-npm-cache-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "package-lock.json" }}
-          paths:
-            - ~/.npm/_cacache
-
   node-lambda:
     <<: *node-base
     docker:
       - image: nousdefions/circleci-lambda:latest
+        environment:
+          LOCAL_DYNAMO: true
+          LOCAL_DYNAMO_PORT: 8000
+      - image: amazon/dynamodb-local
+
   node-v8:
     <<: *node-base
     docker:
       - image: node:8
+        environment:
+          LOCAL_DYNAMO: true
+          LOCAL_DYNAMO_PORT: 8000
+      - image: amazon/dynamodb-local
+
   node-v10:
     <<: *node-base
     docker:
       - image: node:10
+        environment:
+          LOCAL_DYNAMO: true
+          LOCAL_DYNAMO_PORT: 8000
+      - image: amazon/dynamodb-local
 
+workflows:
+  version: 2
+  build:
+    jobs:
+      - node-lambda
+      - node-v8
+      - node-v10

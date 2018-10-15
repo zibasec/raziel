@@ -552,6 +552,7 @@ class Database {
     }
 
     if (process.env['LOCAL_DYNAMO']) {
+      console.log('LOCAL DYNAMO env var detected! Attempting to use local dynamo')
       const dynamoPort = process.env['LOCAL_DYNAMO_PORT'] || 8000
       const { isAvailable } = await this.localDynamoAvailable(dynamoPort)
 

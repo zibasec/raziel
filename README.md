@@ -129,5 +129,23 @@ LOCAL_DYNAMO_PORT=8000
 
 **NOTE:** This does not currently validate that a proper DynamoDB process is listenting on 8000 (or specified port) it only checkes that _something_ is listenting on the port.
 
+
+# Testing
+
+Local Testing
+
+```
+npm run test
+```
+
+CircleCI Emulator ([require the circleci CLI to be installed][2])
+
+```
+circleci local execute --job node-lambda -e AWS_ACCESS_KEY_ID=ABCDEF -e AWS_SECRET_ACCESS_KEY=GHIJKL
+circleci local execute --job node-v8 -e AWS_ACCESS_KEY_ID=ABCDEF -e AWS_SECRET_ACCESS_KEY=GHIJKL
+circleci local execute --job node-v10 -e AWS_ACCESS_KEY_ID=ABCDEF -e AWS_SECRET_ACCESS_KEY=GHIJKL
+```
+
 [0]:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols
 [1]:https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html
+[2]:https://github.com/CircleCI-Public/circleci-cli
