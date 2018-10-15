@@ -7,19 +7,8 @@ let table = null
 
 const sleep = t => new Promise(resolve => setTimeout(resolve, t))
 
-test('sanity test', t => {
-  t.ok(true)
-  t.end()
-})
-
 test('setup', async t => {
   const opts = {}
-
-  if (process.env['PROFILE']) {
-    opts.credentials = new AWS.SharedIniFileCredentials({
-      profile: process.env['PROFILE']
-    })
-  }
 
   db = new Database(opts)
   t.ok(db.db, 'exposes the underlying database connection')
