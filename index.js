@@ -1,6 +1,5 @@
 const AWS = require('aws-sdk')
 const dateAt = require('date-at')
-const { createServer } = require('net')
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
