@@ -521,31 +521,6 @@ class Database {
     this.db = new AWS.DynamoDB(this.opts)
   }
 
-  async localDynamoAvailable (port) {
-    try {
-      const portTaken = async (port) => new Promise((resolve, reject) => {
-        const scanner = createServer()
-          .once('error', err => {
-            if (err.code === 'EADDRINUSE') {
-              resolve(true)
-            }
-            reject(err)
-          })
-          .once('listening', () => {
-            scanner.once('close', () => {
-              resolve(false)
-            }).close()
-          })
-          .listen(port)
-      })
-
-      const isAvailable = await portTaken(port)
-      return { isAvailable: Boolean(isAvailable) }
-    } catch (err) {
-      return { err }
-    }
-  }
-
   async open (table, opts = {}) {
     if (!table) {
       throw new Error('table name required')
@@ -554,22 +529,7 @@ class Database {
     if (process.env['LOCAL_DYNAMO']) {
       console.log('LOCAL DYNAMO env var detected! Attempting to use local dynamo')
       const dynamoPort = process.env['LOCAL_DYNAMO_PORT'] || 8000
-      const { isAvailable } = await this.localDynamoAvailable(dynamoPort)
-
-      if (isAvailable) {
-        opts.endpoint = `http://localhost:${dynamoPort}`
-      } else {
-        return {
-          err: new Error([
-            `LOCAL_DYNAMO environment variable detected but no local dynamoDB`,
-            `was found listening on port ${dynamoPort}. If you intend to talk to`,
-            `'real' DynamoDB in AWS, please unset the environment variable.`,
-            `Otherwise ensure you have it running and if you have it listening`,
-            `to a port other than 8000 (the default) please ensure you are using`,
-            `the LOCAL_DYNAMO_PORT environment variable and try again.`
-          ].join(''))
-        }
-      }
+      opts.endpoint = `http://localhost:${dynamoPort}`
     }
 
     const _opts = Object.assign(this.opts, opts)
