@@ -127,7 +127,7 @@ LOCAL_DYNAMO_PORT=8000
 
 `LOCAL_DYNAMO_PORT` is optional and defaults to 8000 which is the default port.
 
-**NOTE:** This does not currently validate that a proper DynamoDB process is listenting on 8000 (or specified port) it only checkes that _something_ is listenting on the port.
+**NOTE:** This does not validate that a proper DynamoDB process is listenting on 8000 (or specified port).
 
 
 # Testing
