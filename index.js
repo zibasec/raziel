@@ -85,6 +85,10 @@ class Table {
 
     try {
       await this.db.createTable(params).promise()
+
+      const waitParams = { TableName: params.TableName }
+
+      await this.db.waitFor('tableExists', waitParams).promise()
     } catch (err) {
       if (err.name !== 'ResourceInUseException') {
         return resolve({ err })
