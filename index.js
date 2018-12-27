@@ -1,3 +1,4 @@
+const debug = require('debug')('raziel')
 const AWS = require('aws-sdk')
 const dateAt = require('date-at')
 
@@ -8,6 +9,7 @@ const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
 const ERR_KEY_TYPE = new Error('Expected an array')
 const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
 
+const sleep = t => new Promise(resolve => setTimeout(resolve, t))
 const clone = o => JSON.parse(JSON.stringify(o))
 
 const assertKey = key => {
@@ -34,7 +36,6 @@ class Table {
 
   async then (resolve) {
     this.db = new AWS.DynamoDB(this.opts)
-
     const params = {
       AttributeDefinitions: [
         {
@@ -64,12 +65,14 @@ class Table {
     }
 
     if (this.opts.encrypted) {
+      debug('table encryption enabled')
       params.SSESpecification = {
         Enabled: true
       }
     }
 
     if (this.opts.streaming) {
+      debug('table streaming enabled')
       params.StreamSpecification = {
         StreamEnabled: true,
         StreamViewType: this.opts.streaming
@@ -79,22 +82,46 @@ class Table {
     const table = this
 
     if (!this.opts.createIfNotExists) {
+      debug('not attemtping to create, createIfNotExists not supplied')
       return resolve({ db: this.db, table })
     }
 
     try {
+      debug('attempting to create table')
       await this.db.createTable(params).promise()
-
-      const waitParams = { TableName: params.TableName }
-
-      await this.db.waitFor('tableExists', waitParams).promise()
     } catch (err) {
       if (err.name !== 'ResourceInUseException') {
+        debug('error creating table')
         return resolve({ err })
       }
     }
 
+    if (this.waitFor) {
+      debug('waitFor specified')
+      try {
+        const params = { TableName: this.table }
+        await this.db.waitFor('tableExists', params).promise()
+        let count
+        while (true) {
+          if (count > 10) { // should never happen unless there is an AWS issue
+            debug('timeout waiting for ACTIVE STATE')
+            resolve({ err: new Error('Timed out while waiting for ACTIVE state') })
+          }
+          await sleep(1500)
+          const out = await this.db.describeTable(params).promise()
+          if (out.Table.TableStatus === 'ACTIVE') {
+            break
+          }
+          count++
+        }
+      } catch (err) {
+        debug('error waiting for table to be active')
+        resolve({ err })
+      }
+    }
+
     if (this.opts.ttl) {
+      debug('ttl options specified')
       let enabled = false
 
       try {
@@ -105,10 +132,12 @@ class Table {
           data.TimeToLiveDescription.TimeToLiveStatus &&
           data.TimeToLiveDescription.TimeToLiveStatus === 'ENABLED'
       } catch (err) {
+        debug('error describing TimeToLive')
         return resolve({ err })
       }
 
       if (!enabled) {
+        debug('TTL no currently enabled. Enabling...')
         const params = {
           TableName: this.table,
           TimeToLiveSpecification: {
@@ -119,23 +148,14 @@ class Table {
 
         try {
           await this.db.updateTimeToLive(params).promise()
+          debug('ttl updated')
         } catch (err) {
+          debug('error updating ttl')
           return resolve({ err })
         }
       }
     }
-
-    if (this.waitFor) {
-      try {
-        const params = { TableName: this.table }
-        await this.db.waitFor('tableExists', params).promise()
-        resolve({ db: this.db, table })
-      } catch (err) {
-        resolve({ err })
-      }
-    } else {
-      resolve({ db: this.db, table })
-    }
+    resolve({ db: this.db, table })
   }
 
   async put (key, opts, value) {
@@ -206,6 +226,7 @@ class Table {
     try {
       data = await this.db.batchGetItem(params).promise()
     } catch (err) {
+      debug('batchGetItem err')
       return { err }
     }
 
@@ -232,7 +253,6 @@ class Table {
 
       return pair
     })
-
     return { data: pairs.filter(Boolean) }
   }
 
@@ -259,6 +279,7 @@ class Table {
     try {
       data = await this.db.getItem(params).promise()
     } catch (err) {
+      debug('error getting item')
       return { err }
     }
 
@@ -299,6 +320,7 @@ class Table {
     try {
       await this.db.deleteItem(params).promise()
     } catch (err) {
+      debug('error deleting item')
       return { err }
     }
 
@@ -320,12 +342,14 @@ class Table {
     let prefix = opts.key.join('/')
 
     if (prefix) {
+      debug(`prefix => ${prefix}`)
       params.ExpressionAttributeValues = {
         ':key': { S: key },
         ':prefix': { S: prefix }
       }
       params.KeyConditionExpression = HASPREFIX
     } else if (key) {
+      debug(`key => ${key}`)
       params.ExpressionAttributeValues = {
         ':key': { S: key }
       }
@@ -333,10 +357,12 @@ class Table {
     }
 
     if (opts.limit) {
+      debug(`limit ${opts.limit}`)
       params.Limit = opts.limit
     }
 
     if (opts.start) {
+      debug(`start ${opts.start}`)
       params.ExclusiveStartKey = opts.start
     }
 
@@ -438,6 +464,7 @@ class Table {
       try {
         data = await this.db.scan(params).promise()
       } catch (err) {
+        debug('scan error')
         return { err }
       }
 
@@ -504,6 +531,7 @@ class Table {
     try {
       await this.db.batchWriteItem(params).promise()
     } catch (err) {
+      debug('error with batch write')
       return { err }
     }
 
@@ -530,6 +558,7 @@ class Database {
     }
 
     if (process.env['LOCAL_DYNAMO']) {
+      debug('local dynamo in use')
       const dynamoPort = process.env['LOCAL_DYNAMO_PORT'] || 8000
       opts.endpoint = `http://localhost:${dynamoPort}`
     }

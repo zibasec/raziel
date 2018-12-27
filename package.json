@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.209.0",
-    "date-at": "^1.0.0"
+    "date-at": "^1.0.0",
+    "debug": "^4.1.1"
   }
 }

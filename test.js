@@ -1,10 +1,25 @@
 const test = require('tape')
 const Database = require('.')
+const AWS = require('aws-sdk')
 
 let db = null
 let table = null
 
 const sleep = t => new Promise(resolve => setTimeout(resolve, t))
+
+const cleanup = async () => {
+  const testTables = ['raziel_test', 'raziel_test_encrypted']
+  const dynamo = new AWS.DynamoDB({ region: 'us-east-1' })
+  const delTable = async TableName => {
+    await dynamo.deleteTable({ TableName }).promise()
+    await dynamo.waitFor('tableNotExists', { TableName }).promise()
+  }
+  const promises = testTables.map(delTable)
+  await Promise.all(promises)
+}
+
+test.onFinish(cleanup)
+test.onFailure(cleanup)
 
 test('setup', async t => {
   const opts = {}
@@ -18,7 +33,7 @@ test('setup', async t => {
     ttl: true
   }
 
-  const { err: errTable, table: _table } = await db.open('test', params)
+  const { err: errTable, table: _table } = await db.open('raziel_test', params)
   t.ok(!errTable, errTable && errTable.message)
 
   table = _table
@@ -123,7 +138,7 @@ test('passing - multiget with holes', async t => {
 })
 
 test('passing - enable encryption on table', async t => {
-  const { err: errTable, table } = await db.open('test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
+  const { err: errTable, table } = await db.open('raziel_test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
   t.ok(table)
   const { err: errPut } = await table.put(['a', 'a'], { foo: 100 })
