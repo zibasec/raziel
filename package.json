@@ -1,6 +1,6 @@
 {
   "name": "raziel",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "",
   "bin": "bin/raziel",
   "main": "index.js",
