@@ -8,8 +8,12 @@ A light weight, async/await abstraction for DynamoDB.
 
 # USAGE
 ```bash
-npm install MindPointGroup/raziel
+npm install @MindPointGroup/raziel
 ```
+
+## Disclaimer
+
+This is a very specific way of using DynamoDB that is _probably_ not right for your use case. MindPointGroup has published this with the intention of being transparent with how we handle data in our other projects. You are welcomed to contribute, use, modify, etc this project as you see fit (within the confines of the license).
 
 ## CONSTRUCTOR
 Create a constructor and configure it.

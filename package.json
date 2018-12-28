@@ -1,6 +1,6 @@
 {
-  "name": "raziel",
-  "version": "2.1.0",
+  "name": "@MindPointGroup/raziel",
+  "version": "2.1.1",
   "description": "",
   "bin": "bin/raziel",
   "main": "index.js",
@@ -20,7 +20,7 @@
   "homepage": "https://github.com/MindPointGroup/raziel#readme",
   "devDependencies": {
     "babel-eslint": "^10.0.1",
-    "standard": "^11.0.1",
+    "standard": "^12.0.1",
     "tape": "^4.9.0"
   },
   "dependencies": {
