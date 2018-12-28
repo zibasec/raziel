@@ -8,7 +8,7 @@ A light weight, async/await abstraction for DynamoDB.
 
 # USAGE
 ```bash
-npm install @MindPointGroup/raziel
+npm install @mindpointgroup/raziel
 ```
 
 ## Disclaimer
