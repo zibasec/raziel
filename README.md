@@ -115,7 +115,7 @@ In node versions less than 10.1.x
 const iterator = table.query({ key: ['a'] })
 
 while (true) {
-  const { err, key, value, done } = await iterator.next()
+  const { err, value: { key, value } = {}, done } = await iterator.next()
 
   if (done) break // only true when there is no more data
 }
