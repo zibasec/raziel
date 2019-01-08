@@ -373,7 +373,13 @@ class Table {
     let complete = false
     let i = 0
 
-    const asyncIterator = Symbol.asyncIterator && !opts.legacy
+    const legacy = (
+      opts.legacy ||
+      this.opts.legacy ||
+      process.env.LEGACY
+    )
+
+    const asyncIterator = Symbol.asyncIterator && !legacy
 
     return {
       [Symbol.asyncIterator] () {
