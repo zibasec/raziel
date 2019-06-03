@@ -148,9 +148,9 @@ const iterator = table.query(
 )
 ```
 
-In the above example, the first argument is the `KeyConditionExpression`, and
-the second argument is the `FilterExpression`. You don't need to specify the
-`ExpressionAttributeValues` or the `ExpressionAttributeNames` since thats
+In the above example, the first argument is the [`KeyConditionExpression`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression), and
+the second argument is the [`FilterExpression`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-FilterExpression). You don't need to specify the
+[`ExpressionAttributeValues`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeValues) or the [`ExpressionAttributeNames`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeNames) since thats
 already parsed out for you. Values are contained in double quotes and you can
 mitigate reserved words using an octothorpe (`#`).
 
