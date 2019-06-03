@@ -619,7 +619,7 @@ class Table {
 class Database {
   constructor (opts) {
     this.opts = opts || {}
-    this.opts.region = this.opts.region || 'us-west-2'
+    this.opts.region = this.opts.region || 'us-east-1'
     this.opts.sep = this.opts.sep || '/'
 
     if (this.opts.credentials) {
