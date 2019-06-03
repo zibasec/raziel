@@ -148,11 +148,11 @@ const iterator = table.query(
 )
 ```
 
-In the above example, the first argument is the [`KeyConditionExpression`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression), and
-the second argument is the [`FilterExpression`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-FilterExpression). You don't need to specify the
-[`ExpressionAttributeValues`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeValues) or the [`ExpressionAttributeNames`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeNames) since thats
-already parsed out for you. Values are contained in double quotes and you can
-mitigate reserved words using an octothorpe (`#`).
+In the above example, the first argument is the [`KeyConditionExpression`][ke],
+and the second argument is the [`FilterExpression`][fe]. You don't need to
+specify the [`ExpressionAttributeValues`][eav] since thats already parsed out
+for you. Values are contained in double quotes and you can mitigate reserved
+words using an octothorpe (`#`).
 
 ### LEGACY NODE VERSIONS
 
@@ -168,7 +168,8 @@ while (true) {
 ```
 
 ## Working with local DynamoDB
-If you would like to use [DynamoDB Local][1] you will want to set the following environment variables.
+If you would like to use [DynamoDB Local][1] you will want to set the following
+environment variables.
 
 ```
 LOCAL_DYNAMO=true
@@ -177,7 +178,8 @@ LOCAL_DYNAMO_PORT=8000
 
 `LOCAL_DYNAMO_PORT` is optional and defaults to 8000 which is the default port.
 
-**NOTE:** This does not validate that a proper DynamoDB process is listenting on 8000 (or specified port).
+**NOTE:** This does not validate that a proper DynamoDB process is listenting on
+`8000` (or specified port).
 
 
 # Testing
@@ -199,3 +201,7 @@ circleci local execute --job node-v10 -e AWS_ACCESS_KEY_ID=ABCDEF -e AWS_SECRET_
 [0]:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols
 [1]:https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html
 [2]:https://github.com/CircleCI-Public/circleci-cli
+
+[ke]:https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
+[fe]:https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-FilterExpression
+[eva]:https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeValues) or the [`ExpressionAttributeNames`](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-ExpressionAttributeNames

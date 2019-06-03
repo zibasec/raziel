@@ -1,33 +1,17 @@
-const debug = require('debug')('raziel')
+const debug = require('debug')('dynamodb')
 const AWS = require('aws-sdk')
 const dateAt = require('date-at')
+const util = require('./util')
 
-const Q_RE = /(?:"([^"]*)")/g
-const RESERVED_WORD_RE = /#(\w+)/g
-
-const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
-const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
-
-const ERR_KEY_LEN = new Error('Malformed key, expected [hash, range, ...]')
-const ERR_KEY_TYPE = new Error('Expected an array')
-const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
-
-const sleep = t => new Promise(resolve => setTimeout(resolve, t))
-const clone = o => JSON.parse(JSON.stringify(o))
-
-const assertKey = key => {
-  if (!Array.isArray(key)) {
-    return { err: ERR_KEY_TYPE, key }
-  }
-
-  if (!(key.length >= 2)) {
-    return { err: ERR_KEY_LEN, key }
-  }
-
-  if (!key[0] || !key[1]) {
-    return { err: ERR_KEY_EMPTY, key }
-  }
-}
+const {
+  assertKey,
+  sleep,
+  clone,
+  HASPREFIX,
+  NOTEXISTS,
+  RESERVED_WORD_RE,
+  Q_RE
+} = util
 
 class Table {
   constructor (table, opts) {
@@ -619,7 +603,7 @@ class Table {
 class Database {
   constructor (opts) {
     this.opts = opts || {}
-    this.opts.region = this.opts.region || 'us-east-1'
+    this.opts.region = this.opts.region || 'us-west-2'
     this.opts.sep = this.opts.sep || '/'
 
     if (this.opts.credentials) {

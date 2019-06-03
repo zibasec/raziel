@@ -266,6 +266,28 @@ test('passing - query with limit', async t => {
   t.end()
 })
 
+test('passing - query with limit', async t => {
+  const p = { legacy: true, limit: 3 }
+
+  const iterator = table.query(p)
+
+  let count = 0
+
+  while (true) {
+    const { err, key, value, done } = await iterator.next()
+
+    if (done) break
+    count++
+
+    t.ok(!err, err && err.message)
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 3)
+  t.end()
+})
+
 test('passing - query with hash component', async t => {
   const params = {
     key: ['a'],
