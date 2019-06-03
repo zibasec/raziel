@@ -137,6 +137,58 @@ test('passing - multiget with holes', async t => {
   t.end()
 })
 
+test('passing - put additional attributes', async t => {
+  await table.put(['z', 'aa'], null, { foo: 'bar' }, { x: { S: 'a' } })
+  await table.put(['z', 'ab'], null, { foo: 'bar' }, { x: { S: 'b' } })
+  await table.put(['z', 'ac'], null, { foo: 'bar' }, { x: { S: 'c' } })
+  await table.put(['z', 'ad'], null, { foo: 'bar' }, { x: { S: 'd' } })
+
+  {
+    const { err, value } = await table.get(['z', 'ab'])
+    t.ok(!err, 'key/value was added')
+    t.deepEqual(value, { foo: 'bar' })
+  }
+
+  {
+    const itr = table.query(
+      `hkey = "z" AND rkey BETWEEN "aa" AND "ac"`
+    )
+
+    let keys = []
+
+    for await (const { key } of itr) keys.push(key)
+
+    t.equal(keys.length, 3, 'correct number of records received from query')
+  }
+
+  {
+    const itr = table.query(
+      `hkey = "z" AND begins_with(rkey, "a")`
+    )
+
+    let keys = []
+
+    for await (const { key } of itr) keys.push(key)
+
+    t.equal(keys.length, 4, 'correct number of records received from query')
+  }
+
+  {
+    const itr = table.query(
+      `hkey = "z" AND begins_with(rkey, "a")`,
+      `x = "b"`
+    )
+
+    let keys = []
+
+    for await (const { key } of itr) keys.push(key)
+
+    t.equal(keys.length, 1, 'correct number of records received from query')
+  }
+
+  t.end()
+})
+
 test('passing - enable encryption on table', async t => {
   const { err: errTable, table } = await db.open('raziel_test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
@@ -174,6 +226,28 @@ test('passing - query without prefix', async t => {
   }
 
   t.equal(count, 4)
+  t.end()
+})
+
+test('passing - query with limit', async t => {
+  const p = { legacy: true, limit: 3 }
+
+  const iterator = table.query(p)
+
+  let count = 0
+
+  while (true) {
+    const { err, key, value, done } = await iterator.next()
+
+    if (done) break
+    count++
+
+    t.ok(!err, err && err.message)
+    t.notEqual(key, undefined, 'has a key')
+    t.notEqual(value, undefined, 'has a value')
+  }
+
+  t.equal(count, 3)
   t.end()
 })
 
