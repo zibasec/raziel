@@ -1,4 +1,4 @@
-const debug = require('debug')('dynamodb')
+const debug = require('debug')('raziel')
 const AWS = require('aws-sdk')
 const dateAt = require('date-at')
 
