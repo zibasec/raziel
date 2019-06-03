@@ -2,6 +2,9 @@ const debug = require('debug')('raziel')
 const AWS = require('aws-sdk')
 const dateAt = require('date-at')
 
+const Q_RE = /(?:"([^"]*)")/g
+const RESERVED_WORD_RE = /#(\w+)/g
+
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const HASPREFIX = 'hkey = :key and begins_with(rkey, :prefix)'
 
@@ -158,8 +161,8 @@ class Table {
     resolve({ db: this.db, table })
   }
 
-  async put (key, opts, value) {
-    if (!value) {
+  async put (key, opts, value, ...rest) {
+    if (typeof value === 'undefined') {
       value = opts
       opts = null
     }
@@ -185,9 +188,21 @@ class Table {
       TableName: (opts && opts.table) || this.table
     }
 
+    for (const attribute of rest) {
+      params.Item = { ...params.Item, ...attribute }
+    }
+
     if (opts && opts.ttl) {
+      let N = null
+
+      if (typeof opts.ttl === 'number') {
+        N = String(opts.ttl)
+      } else {
+        N = String(dateAt(opts.ttl).getTime() / 1000)
+      }
+
       params.Item.ttl = {
-        N: String(dateAt(opts.ttl).getTime() / 1000)
+        N
       }
     }
 
@@ -327,12 +342,56 @@ class Table {
     return {}
   }
 
-  query (opts = {}) {
+  uuid () {
+    const filler = () => 'abcdef'[Math.floor(Math.random() * 6)]
+    return Array.from({ length: 8 }, filler).join('')
+  }
+
+  query (opts = {}, filter) {
     const params = {
-      TableName: (opts && opts.table) || this.table,
-      ProjectionExpression: 'hkey, rkey, #val',
-      ExpressionAttributeNames: {
-        '#val': 'value'
+      TableName: (opts && opts.table) || this.table
+    }
+
+    const collectValues = (_, S) => {
+      const id = `:${this.uuid()}`
+      params.ExpressionAttributeValues[id] = { S }
+      return id
+    }
+
+    const collectNames = (_, S) => {
+      const id = `#${S}`
+      params.ExpressionAttributeNames[id] = { S }
+      return id
+    }
+
+    if (typeof opts === 'string') {
+      const q = opts
+      opts = { method: 'query' }
+
+      params.ExpressionAttributeValues = {}
+      params.KeyConditionExpression = q
+        .replace(RESERVED_WORD_RE, collectNames)
+        .replace(Q_RE, collectValues)
+    } else {
+      params.ProjectionExpression = 'hkey, rkey, #val'
+      params.ExpressionAttributeNames = { '#val': 'value' }
+    }
+
+    if (filter) {
+      params.FilterExpression = filter
+        .replace(RESERVED_WORD_RE, collectNames)
+        .replace(Q_RE, collectValues)
+    }
+
+    if (opts.ttl) {
+      params.ProjectionExpression = 'hkey, rkey, #myttl, #val'
+      params.FilterExpression = '#myttl > :ttl'
+      params.ExpressionAttributeValues = {
+        ':ttl': { N: '0' }
+      }
+      params.ExpressionAttributeNames = {
+        '#val': 'value',
+        '#myttl': 'ttl'
       }
     }
 
@@ -366,20 +425,17 @@ class Table {
       params.ExclusiveStartKey = opts.start
     }
 
-    const method = key ? 'query' : 'scan'
+    const method = opts.method || key ? 'query' : 'scan'
     const array = []
     const db = this.db
 
     let complete = false
     let i = 0
 
-    const legacy = (
-      opts.legacy ||
-      this.opts.legacy ||
-      process.env.LEGACY
-    )
+    const asyncIterator = Symbol.asyncIterator && !opts.legacy
 
-    const asyncIterator = Symbol.asyncIterator && !legacy
+    let start = null
+    debug(params)
 
     return {
       [Symbol.asyncIterator] () {
@@ -389,19 +445,20 @@ class Table {
         if (i < array.length) {
           const data = array[i++]
 
-          if (asyncIterator) {
+          if (asyncIterator && !process.env.LEGACY) {
             return { value: data }
           }
 
           return {
             key: data.key,
             value: data.value,
+            ttl: data.ttl,
             done: false
           }
         }
 
         if (complete) {
-          return { done: true }
+          return { start, done: true }
         }
 
         let res = null
@@ -416,14 +473,18 @@ class Table {
         }
 
         if (!res || (res.Items && !res.Items.length)) {
-          return { done: true }
+          return { start, done: true }
         }
 
         res.Items.map(item => {
           let value = null
+          let ttl = null
 
           try {
             value = JSON.parse(item.value.S)
+            if (opts.ttl) {
+              ttl = Number(JSON.parse(item.ttl.N))
+            }
           } catch (err) {
             if (asyncIterator) {
               throw err
@@ -432,10 +493,11 @@ class Table {
           }
 
           const key = [item.hkey.S, item.rkey.S]
-          array.push({ key, value })
+          array.push({ key, value, ttl })
         })
 
-        if (typeof res.LastEvaluatedKey === 'undefined') {
+        if (typeof res.LastEvaluatedKey === 'undefined' || opts.limit) {
+          start = res.LastEvaluatedKey
           complete = true
         } else {
           params.ExclusiveStartKey = res.LastEvaluatedKey
@@ -443,13 +505,14 @@ class Table {
 
         const data = array[i++]
 
-        if (asyncIterator) {
+        if (asyncIterator && !process.env.LEGACY) {
           return { value: data }
         }
 
         return {
           key: data.key,
           value: data.value,
+          ttl: data.ttl,
           done: false
         }
       }
@@ -487,12 +550,20 @@ class Table {
   async batch (ops, opts = {}) {
     const parseOp = op => {
       op = clone(op)
+      const hkey = { S: op.key.shift() }
+      const rkey = { S: op.key.join(this.opts.sep) }
 
       if (op.type === 'put') {
-        let v = null
+        const ttl = op.ttl
+        let value = op.value
+
+        delete op.value
+        delete op.ttl
+        delete op.type
+        delete op.key
 
         try {
-          v = JSON.stringify(op.value)
+          value = { S: JSON.stringify(value) }
         } catch (err) {
           return { err }
         }
@@ -500,30 +571,30 @@ class Table {
         const o = {
           PutRequest: {
             Item: {
-              hkey: { S: op.key.shift() },
-              rkey: { S: op.key.join(this.opts.sep) },
-              value: { S: v }
+              hkey,
+              rkey,
+              value,
+              ...op // add the rest
             }
           }
         }
 
-        if (op.ttl) {
-          o.PutRequest.Item.ttl = {
-            N: String(dateAt(op.ttl).getTime() / 1000)
+        if (ttl) {
+          let N = null
+
+          if (typeof ttl === 'number') {
+            N = String(ttl)
+          } else {
+            N = String(dateAt(ttl).getTime() / 1000)
           }
+
+          o.PutRequest.Item.ttl = { N }
         }
 
         return o
       }
 
-      return {
-        DeleteRequest: {
-          Key: {
-            hkey: { S: op.key.shift() },
-            rkey: { S: op.key.join(this.opts.sep) }
-          }
-        }
-      }
+      return { DeleteRequest: { Key: { hkey, rkey } } }
     }
 
     const table = (opts && opts.table) || this.table
@@ -556,6 +627,10 @@ class Database {
     }
 
     this.db = new AWS.DynamoDB(this.opts)
+  }
+
+  uuid () {
+    return Math.random().toString(16).slice(2)
   }
 
   async open (table, opts = {}) {

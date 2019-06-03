@@ -2,25 +2,26 @@
 A light weight, async/await abstraction for DynamoDB.
 
 
-# BUILD STATUS
-[![CircleCI](https://circleci.com/gh/MindPointGroup/raziel/tree/master.svg?style=svg&circle-token=5bd6211fdb6cbe6df549b89b9f3d478f767e0d0d)](https://circleci.com/gh/MindPointGroup/raziel/tree/master)
-
-
 # USAGE
+
+#### AS A LIBRARY
+
 ```bash
-npm install @mindpointgroup/raziel
+npm install mindpointgroup/raziel
 ```
 
-## Disclaimer
+#### AS A CLI
 
-This is a very specific way of using DynamoDB that is _probably_ not right for your use case. MindPointGroup has published this with the intention of being transparent with how we handle data in our other projects. You are welcomed to contribute, use, modify, etc this project as you see fit (within the confines of the license).
+```bash
+npm install mindpointgroup/raziel -g
+```
 
 ## CONSTRUCTOR
 Create a constructor and configure it.
 
 ```js
-const Database = require('raziel')
-const db = new Database({ region: 'us-east-1' })
+const Database = require('dynamodb')
+const db = new Database({ region: 'us-west-2' })
 ```
 
 ## TABLES
@@ -49,6 +50,28 @@ A key is input as an array. The first item in the array is the
 to form the `range`. The `partition` is like a `grouping` of keys.
 Keys are sorted lexicographically and can be queried or looked up.
 
+You can optionally provide more arguments that will be used as
+attributes.
+
+```js
+const attr1 = { test: { S: 'Foo' } }
+const { err } = await table.put(['a', 'a'], value, attr1)
+```
+
+#### TTL
+An object literal can be provided as the second positional argument.
+This is where a `TTL` (time to live) value can be specified. When
+specified, the item will be deleted from the database if the duration
+specified is less than the current time.
+
+For example the following `put` operation will add an item to the
+database which will be removed after `1 second`.
+
+```js
+const { err } = await table.put(['a', 'a'], { ttl: '+1s' }, { foo: 100 })
+```
+
+See [this](https://github.com/hxoht/date-at) repo for ttl units of measure.
 
 ## GET
 Get a key/value
@@ -82,13 +105,15 @@ const { err } = await table.del(['a', 'b'])
 ```
 
 ## BATCH
-Put and or delete multiple key/values
+Put and or delete multiple key/values. Use an array of objects. With `type` and
+`key`. If the `type` is `put`, you must specify `value` and you can also provide
+other attributes (like the `put` method).
 
 ```js
 const ops = [
   { type: 'put', key: ['a', 'a'], value: { foo: 100 } },
   { type: 'put', key: ['a', 'b'], value: { bar: 200 } },
-  { type: 'put', key: ['b', 'a'], value: { baz: 300 } },
+  { type: 'put', key: ['b', 'a'], value: { baz: 300 }, someOtherAttribute: 1 },
   { type: 'del', key: ['a', 'c'] }
 ]
 const { err } = await table.batch(ops)
@@ -103,19 +128,40 @@ only three records in the database. Two events would be
 emitted by the following query.
 
 ```js
-const iterator = table.query({ key: ['a'] })
+const params = {
+  key: ['a']
+}
+
+const iterator = table.query(params)
 
 for await (const { key, value } of iterator) {
   console.log(key, value)
 }
 ```
 
+### ADVANCED QUERIES
+
+```js
+const iterator = table.query(
+  `hkey = "z" AND begins_with(rkey, "a")`,
+  `x = "b"`
+)
+```
+
+In the above example, the first argument is the `KeyConditionExpression`, and
+the second argument is the `FilterExpression`. You don't need to specify the
+`ExpressionAttributeValues` or the `ExpressionAttributeNames` since thats
+already parsed out for you. Values are contained in double quotes and you can
+mitigate reserved words using an octothorpe (`#`).
+
+### LEGACY NODE VERSIONS
+
 In node versions less than 10.1.x
 ```js
 const iterator = table.query({ key: ['a'] })
 
 while (true) {
-  const { err, value: { key, value } = {}, done } = await iterator.next()
+  const { err, key, value, done } = await iterator.next()
 
   if (done) break // only true when there is no more data
 }
