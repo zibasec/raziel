@@ -4,6 +4,7 @@ const AWS = require('aws-sdk')
 
 let db = null
 let table = null
+let encTable = null
 
 const sleep = t => new Promise(resolve => setTimeout(resolve, t))
 
@@ -203,10 +204,11 @@ test('passing - put additional attributes', async t => {
 })
 
 test('passing - enable encryption on table', async t => {
-  const { err: errTable, table } = await db.open('raziel_test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
+  const { err: errTable, table: _table } = await db.open('raziel_test_encrypted', { waitFor: true, encrypted: true, createIfNotExists: true })
   t.ok(!errTable, errTable && errTable.message)
-  t.ok(table)
-  const { err: errPut } = await table.put(['a', 'a'], { foo: 100 })
+  encTable = _table
+  t.ok(encTable)
+  const { err: errPut } = await encTable.put(['a', 'a'], { foo: 100 })
   t.ok(!errPut, errPut && errPut.message)
   t.end()
 })
@@ -214,7 +216,7 @@ test('passing - enable encryption on table', async t => {
 test('failing - multiget without keys', async t => {
   const keys = []
 
-  const { err } = await table.get(keys)
+  const { err } = await encTable.get(keys)
   t.ok(err, err && err.message)
   t.end()
 })
@@ -238,7 +240,7 @@ test('passing - query without prefix', async t => {
     t.notEqual(value, undefined, 'has a value')
   }
 
-  t.equal(count, 4)
+  t.equal(count, 8)
   t.end()
 })
 
@@ -339,7 +341,7 @@ test('passing - async iterator', async t => {
 test('passing - count', async t => {
   const { err, count } = await table.count()
   t.ok(!err, err && err.message)
-  t.equal(count, 4, 'count is correct')
+  t.equal(count, 8, 'count is correct')
   t.end()
 })
 
