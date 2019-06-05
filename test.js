@@ -11,8 +11,15 @@ const cleanup = async () => {
   const testTables = ['raziel_test', 'raziel_test_encrypted']
   const dynamo = new AWS.DynamoDB({ region: 'us-east-1' })
   const delTable = async TableName => {
-    await dynamo.deleteTable({ TableName }).promise()
-    await dynamo.waitFor('tableNotExists', { TableName }).promise()
+    try {
+      await dynamo.deleteTable({ TableName }).promise()
+      await dynamo.waitFor('tableNotExists', { TableName }).promise()
+    } catch (err) {
+      // db doesnt exist, so we don't care
+      if (err.code !== 'ResourceNotFoundException') {
+        throw err
+      }
+    }
   }
   const promises = testTables.map(delTable)
   await Promise.all(promises)
@@ -22,6 +29,12 @@ test.onFinish(cleanup)
 test.onFailure(cleanup)
 
 test('setup', async t => {
+  try {
+    await cleanup()
+  } catch (err) {
+    t.fail(err)
+  }
+
   const opts = {}
 
   db = new Database(opts)
