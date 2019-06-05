@@ -1,5 +1,5 @@
 const test = require('tape')
-const Database = require('.')
+const Database = require('./src')
 const AWS = require('aws-sdk')
 
 let db = null
