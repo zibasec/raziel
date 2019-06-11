@@ -1,6 +1,8 @@
-const debug = require('debug')('dynamodb')
+const Debug = require('debug')
 const AWS = require('aws-sdk')
 const { sleep } = require('./util')
+
+const debug = Debug('dynamodb:raziel')
 
 const methods = {
   ...require('./methods/batch'),
@@ -159,7 +161,7 @@ Object.assign(Table.prototype, methods)
 class Database {
   constructor (opts) {
     this.opts = opts || {}
-    this.opts.region = this.opts.region || 'us-west-2'
+    this.opts.region = this.opts.region || 'us-east-1'
     this.opts.sep = this.opts.sep || '/'
 
     if (this.opts.credentials) {
