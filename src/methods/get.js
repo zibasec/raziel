@@ -47,8 +47,9 @@ api._gets = async function _gets (keys, opts = {}) {
       pair.value = item.value.S
     }
 
-    return pair
+    return { ...item, ...pair }
   })
+
   return { data: pairs.filter(Boolean) }
 }
 
@@ -96,5 +97,5 @@ api.get = async function get (key, opts = {}) {
     return { err }
   }
 
-  return { value }
+  return { ...data.Item, value }
 }

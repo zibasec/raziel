@@ -145,7 +145,7 @@ api.query = function query (opts = {}, filter) {
         }
 
         const key = [item.hkey.S, item.rkey.S]
-        array.push({ key, value, ttl })
+        array.push({ ...item, key, value, ttl })
       })
 
       if (typeof res.LastEvaluatedKey === 'undefined' || opts.limit) {
