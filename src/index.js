@@ -47,8 +47,8 @@ class Table {
         }
       ],
       ProvisionedThroughput: {
-        ReadCapacityUnits: 5,
-        WriteCapacityUnits: 5
+        ReadCapacityUnits: this.opts.readCapacity || 5,
+        WriteCapacityUnits: this.opts.writeCapacity || 5
       },
       TableName: this.table
     }
@@ -67,8 +67,6 @@ class Table {
         StreamViewType: this.opts.streaming
       }
     }
-
-    // TODO Possible allow option for autoscalling?
 
     const table = this
 
