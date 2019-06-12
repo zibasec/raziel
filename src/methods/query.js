@@ -85,8 +85,6 @@ api.query = function query (opts = {}, filter) {
   let complete = false
   let i = 0
 
-  const asyncIterator = Symbol.asyncIterator && !opts.legacy
-
   let start = null
 
   return {
@@ -96,17 +94,7 @@ api.query = function query (opts = {}, filter) {
     next: async () => {
       if (i < array.length) {
         const data = array[i++]
-
-        if (asyncIterator && !process.env.LEGACY) {
-          return { value: data }
-        }
-
-        return {
-          key: data.key,
-          value: data.value,
-          ttl: data.ttl,
-          done: false
-        }
+        return { value: data }
       }
 
       if (complete) {
@@ -118,10 +106,7 @@ api.query = function query (opts = {}, filter) {
       try {
         res = await db[method](params).promise()
       } catch (err) {
-        if (asyncIterator) {
-          throw err
-        }
-        return { err }
+        throw err
       }
 
       if (!res || (res.Items && !res.Items.length)) {
@@ -134,14 +119,12 @@ api.query = function query (opts = {}, filter) {
 
         try {
           value = JSON.parse(item.value.S)
+
           if (opts.ttl) {
             ttl = Number(JSON.parse(item.ttl.N))
           }
         } catch (err) {
-          if (asyncIterator) {
-            throw err
-          }
-          return { err }
+          throw err
         }
 
         const key = [item.hkey.S, item.rkey.S]
@@ -157,16 +140,7 @@ api.query = function query (opts = {}, filter) {
 
       const data = array[i++]
 
-      if (asyncIterator && !process.env.LEGACY) {
-        return { value: data }
-      }
-
-      return {
-        key: data.key,
-        value: data.value,
-        ttl: data.ttl,
-        done: false
-      }
+      return { value: data }
     }
   }
 }

@@ -1,5 +1,5 @@
 const test = require('tape')
-const Database = require('./src')
+const Database = require('../src')
 const AWS = require('aws-sdk')
 
 let db = null
@@ -229,13 +229,9 @@ test('passing - query without prefix', async t => {
 
   let count = 0
 
-  while (true) {
-    const { err, key, value, done } = await iterator.next()
-
-    if (done) break
+  for await (const { key, value } of iterator) {
     count++
 
-    t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
   }
@@ -245,19 +241,15 @@ test('passing - query without prefix', async t => {
 })
 
 test('passing - query with limit', async t => {
-  const p = { legacy: true, limit: 3 }
+  const p = { limit: 3 }
 
   const iterator = table.query(p)
 
   let count = 0
 
-  while (true) {
-    const { err, key, value, done } = await iterator.next()
-
-    if (done) break
+  for await (const { key, value } of iterator) {
     count++
 
-    t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
   }
@@ -267,19 +259,15 @@ test('passing - query with limit', async t => {
 })
 
 test('passing - query with limit', async t => {
-  const p = { legacy: true, limit: 3 }
+  const p = { limit: 3 }
 
   const iterator = table.query(p)
 
   let count = 0
 
-  while (true) {
-    const { err, key, value, done } = await iterator.next()
-
-    if (done) break
+  for await (const { key, value } of iterator) {
     count++
 
-    t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
   }
@@ -290,8 +278,7 @@ test('passing - query with limit', async t => {
 
 test('passing - query with hash component', async t => {
   const params = {
-    key: ['a'],
-    legacy: true
+    key: ['a']
   }
 
   const iterator = table.query(params)
@@ -299,13 +286,9 @@ test('passing - query with hash component', async t => {
 
   let count = 0
 
-  while (true) {
-    const { err, key, value, done } = await iterator.next()
-
-    if (done) break
+  for await (const { key, value } of iterator) {
     count++
 
-    t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
   }
@@ -316,8 +299,7 @@ test('passing - query with hash component', async t => {
 
 test('passing - query with hash and range components', async t => {
   const params = {
-    key: ['a', 'b'],
-    legacy: true
+    key: ['a', 'b']
   }
 
   const iterator = table.query(params)
@@ -325,13 +307,9 @@ test('passing - query with hash and range components', async t => {
 
   let count = 0
 
-  while (true) {
-    const { err, key, value, done } = await iterator.next()
-
-    if (done) break
+  for await (const { key, value } of iterator) {
     count++
 
-    t.ok(!err, err && err.message)
     t.notEqual(key, undefined, 'has a key')
     t.notEqual(value, undefined, 'has a value')
   }
@@ -349,7 +327,6 @@ test('passing - async iterator', async t => {
   t.ok(it, 'has an iterator')
   let count = 0
 
-  // eslint-disable-next-line no-alert
   for await (const { key, value } of it) {
     count++
     t.notEqual(key, undefined, 'has a key')
