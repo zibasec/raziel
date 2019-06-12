@@ -158,7 +158,8 @@ test('passing - put additional attributes', async t => {
   await table.put(['z', 'ad'], null, { foo: 'bar' }, { x: { S: 'd' } })
 
   {
-    const { err, value } = await table.get(['z', 'ab'])
+    const { err, value, x } = await table.get(['z', 'ab'])
+    t.equal(x.S, 'b', 'attribute found')
     t.ok(!err, 'key/value was added')
     t.deepEqual(value, { foo: 'bar' })
   }
@@ -225,7 +226,7 @@ test('failing - multiget without keys', async t => {
 })
 
 test('passing - query without prefix', async t => {
-  const params = { legacy: true }
+  const params = {}
 
   const iterator = table.query(params)
   t.ok(iterator, 'has an iterator')
