@@ -182,7 +182,10 @@ test('passing - put additional attributes', async t => {
 
     let keys = []
 
-    for await (const { key } of itr) keys.push(key)
+    for await (const record of itr) {
+      keys.push(record.key)
+      t.ok(record.x.S, 'attribute found')
+    }
 
     t.equal(keys.length, 4, 'correct number of records received from query')
   }
