@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "pretest": "standard --parser babel-eslint",
-    "test": "node test.js || node --harmony-async-iteration test.js"
+    "test": "node test"
   },
   "repository": {
     "type": "git",

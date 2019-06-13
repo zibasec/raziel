@@ -1,6 +1,6 @@
 const minimist = require('minimist')
 const Database = require('.')
-const pkg = require('./package.json')
+const pkg = require('../package.json')
 
 const argv = minimist(process.argv.slice(2))
 

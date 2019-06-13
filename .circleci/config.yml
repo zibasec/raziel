@@ -34,16 +34,6 @@ jobs:
           LOCAL_DYNAMO: true
           LOCAL_DYNAMO_PORT: 8000
       - image: amazon/dynamodb-local
-
-  node-v8:
-    <<: *node-base
-    docker:
-      - image: node:8
-        environment:
-          LOCAL_DYNAMO: true
-          LOCAL_DYNAMO_PORT: 8000
-      - image: amazon/dynamodb-local
-
   node-v10:
     <<: *node-base
     docker:
@@ -57,6 +47,4 @@ workflows:
   version: 2
   build:
     jobs:
-      - node-lambda
-      - node-v8
       - node-v10
