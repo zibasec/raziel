@@ -2,7 +2,7 @@ const Debug = require('debug')
 const AWS = require('aws-sdk')
 const { sleep } = require('./util')
 
-const debug = Debug('dynamodb:raziel')
+const debug = Debug('raziel')
 
 const methods = {
   ...require('./methods/batch'),
