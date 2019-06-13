@@ -5,7 +5,7 @@ const pkg = require('../package.json')
 const argv = minimist(process.argv.slice(2))
 
 const db = new Database({
-  region: argv.region || 'us-west-2'
+  region: argv.region || 'us-east-1'
 })
 
 if (argv.h || argv.help || !argv._.length) {

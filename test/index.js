@@ -10,7 +10,8 @@ const sleep = t => new Promise(resolve => setTimeout(resolve, t))
 
 const cleanup = async () => {
   const testTables = ['raziel_test', 'raziel_test_encrypted']
-  const dynamo = new AWS.DynamoDB({ region: 'us-east-1' })
+  const dynamo = new AWS.DynamoDB()
+
   const delTable = async TableName => {
     try {
       await dynamo.deleteTable({ TableName }).promise()
