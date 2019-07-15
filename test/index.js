@@ -65,6 +65,16 @@ test('passing - put', async t => {
   t.end()
 })
 
+test('passing - put if not exists', async t => {
+  const key = ['a', 'a']
+  const value = { foo: 100 }
+
+  const { err } = await table.put(key, { notExists: true }, value)
+
+  t.ok(err, err && err.message)
+  t.end()
+})
+
 test('passing - get', async t => {
   const key = ['a', 'a']
 
