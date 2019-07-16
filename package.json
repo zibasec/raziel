@@ -1,6 +1,6 @@
 {
   "name": "@mindpointgroup/raziel",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "",
   "bin": "bin/raziel",
   "main": "src/index.js",
@@ -26,6 +26,7 @@
   "dependencies": {
     "aws-sdk": "^2.209.0",
     "date-at": "^1.0.0",
-    "debug": "^4.1.1"
+    "debug": "^4.1.1",
+    "json-stringify-safe": "^5.0.1"
   }
 }

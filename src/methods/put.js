@@ -1,5 +1,6 @@
 const { assertKey } = require('../util')
 const dateAt = require('date-at')
+const stringify = require('json-stringify-safe')
 
 const NOTEXISTS = 'attribute_not_exists(hkey) AND attribute_not_exists(rkey)'
 const api = module.exports = {}
@@ -17,7 +18,7 @@ api.put = async function put (key, opts, value, ...rest) {
   let v = null
 
   try {
-    v = JSON.stringify(value)
+    v = stringify(value)
   } catch (err) {
     return { err }
   }

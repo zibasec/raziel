@@ -1,5 +1,6 @@
 const dateAt = require('date-at')
 const { clone } = require('../util')
+const stringify = require('json-stringify-safe')
 
 const api = module.exports = {}
 
@@ -19,7 +20,7 @@ api.batch = async function batch (ops, opts = {}) {
       delete op.key
 
       try {
-        value = { S: JSON.stringify(value) }
+        value = { S: stringify(value) }
       } catch (err) {
         return { err }
       }

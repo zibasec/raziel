@@ -1,6 +1,7 @@
 const minimist = require('minimist')
 const Database = require('.')
 const pkg = require('../package.json')
+const stringify = require('json-stringify-safe')
 
 const argv = minimist(process.argv.slice(2))
 
@@ -58,7 +59,7 @@ async function main () {
 
     for await (const { key, value } of it) {
       if (argv.limit && (count++ === argv.limit)) break
-      process.stdout.write(JSON.stringify({ key, value }) + '\n')
+      process.stdout.write(stringify({ key, value }) + '\n')
     }
 
     process.exit(0)
