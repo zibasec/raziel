@@ -4,7 +4,7 @@ const ERR_KEY_EMPTY = new Error('Hash or Range can not be empty')
 const stringify = require('json-stringify-safe')
 
 const sleep = t => new Promise(resolve => setTimeout(resolve, t))
-const clone = o => stringify(o)
+const clone = o => JSON.parse(stringify(o))
 
 const assertKey = key => {
   if (!Array.isArray(key)) {
