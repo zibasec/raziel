@@ -18,7 +18,7 @@ api.put = async function put (key, opts, value, ...rest) {
   let v = null
 
   try {
-    v = JSON.parse(stringify(value))
+    v = stringify(value)
   } catch (err) {
     return { err }
   }
