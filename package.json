@@ -1,6 +1,6 @@
 {
   "name": "@mindpointgroup/raziel",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "",
   "bin": "bin/raziel",
   "main": "src/index.js",

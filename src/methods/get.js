@@ -82,11 +82,23 @@ api.get = async function get (key, opts = {}) {
   if (data && data.Item && data.Item.ttl) {
     const then = new Date(Number(data.Item.ttl.N) * 1000)
     const now = new Date()
-    if (then <= now) data = null
+
+    if (then <= now) {
+      const err = {
+        notFound: true,
+        expired: true
+      }
+
+      return { err }
+    }
   }
 
   if (!data || !data.Item) {
-    return { err: { notFound: true } }
+    const err = {
+      notFound: true
+    }
+
+    return { err }
   }
 
   let value = null
