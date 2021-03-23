@@ -1,6 +1,6 @@
 {
-  "name": "@mindpointgroup/raziel",
-  "version": "2.4.2",
+  "name": "@zibasec/raziel",
+  "version": "2.4.3",
   "description": "",
   "bin": "bin/raziel",
   "main": "src/index.js",
@@ -10,21 +10,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MindPointGroup/raziel.git"
+    "url": "git+https://github.com/zibasec/raziel.git"
   },
-  "author": "MindPointGroup",
+  "author": "ZibaSec, Inc",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/MindPointGroup/raziel/issues"
+    "url": "https://github.com/zibasec/raziel/issues"
   },
-  "homepage": "https://github.com/MindPointGroup/raziel#readme",
+  "homepage": "https://github.com/zibasec/raziel#readme",
   "devDependencies": {
     "babel-eslint": "^10.0.1",
     "standard": "^12.0.1",
     "tape": "^4.9.0"
   },
   "dependencies": {
-    "aws-sdk": "^2.209.0",
+    "aws-sdk": "^2.869.0",
     "date-at": "^1.0.0",
     "debug": "^4.1.1",
     "json-stringify-safe": "^5.0.1"
