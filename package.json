@@ -24,7 +24,7 @@
     "tape": "^4.9.0"
   },
   "dependencies": {
-    "aws-sdk": "^2.869.0",
+    "aws-sdk": "^2.1354.0",
     "date-at": "^1.0.0",
     "debug": "^4.1.1",
     "json-stringify-safe": "^5.0.1"
